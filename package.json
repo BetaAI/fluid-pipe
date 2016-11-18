@@ -2,7 +2,8 @@
   "name": "fluid-pipe",
   "version": "1.0.0",
   "description": "Runtime mutable pipeline",
-  "main": "lib.js",
+  "main": "dist/fluid-pipe.js",
+  "module": "src/root.js",
   "scripts": {
     "clean": "rimraf dist",
     "build": "webpack",

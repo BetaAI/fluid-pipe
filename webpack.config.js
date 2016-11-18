@@ -3,11 +3,13 @@ const path = require('path');
 
 module.exports =
 {
-  entry:['./lib.js'],
+  entry:['./src/root.js'],
   output:
   {
-    filename:'lib.bundle.js',
+    filename:'fluid-pipe.js',
     path:path.resolve(__dirname, 'dist'),
+    library:'fluid-pipe',
+    libraryTarget:'umd',
     publicPath:'/dist/'
   },
   plugins:
