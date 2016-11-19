@@ -8,7 +8,7 @@ const PROC = Symbol('proc');
 
 function stkLast(stk)
 {
-  let len = stk !== null ? stk.length : 0;
+  const len = stk !== null ? stk.length : 0;
   if(len === 0)
     return undefined;
   return stk[len - 1];
@@ -16,6 +16,8 @@ function stkLast(stk)
 
 function getProcVars(cntx)
 {
+  if(cntx.master)
+    cntx = cntx.headMaster;
   if(!cntx.hasOwnProperty(PROC))
     cntx[PROC] = {prdStack:[{}], msgStack:[], prcDepth:0};
   return cntx[PROC];
@@ -25,17 +27,17 @@ class Context
 {
   constructor(pipe = null)
   {
-    let priv =
+    const priv =
       {
         pipe:pipe,
         master:null
       };
-    Reflect.defineProperty(this, priv, {configurable:false, writable:false, value:priv});
+    Reflect.defineProperty(this, PRIV, {configurable:false, writable:false, value:priv});
   }
 
   beginProcess(msg)
   {
-    let proc = getProcVars(this);
+    const proc = getProcVars(this);
     if(msg)
       proc.msgStack.push(msg);
     return ++proc.prcDepth;
@@ -43,11 +45,12 @@ class Context
 
   endProcess(val = 0)
   {
-    let proc = getProcVars(this);
-    if(proc.prcDepth >= val)
-      proc.prcDepth = val - 1;
-    else if(val === 0)
+    const proc = getProcVars(this);
+    val = Math.abs(val);
+    if(val === 0)
       proc.prcDepth--;
+    else if(proc.prcDepth >= val)
+      proc.prcDepth = val - 1;
     if(proc.prcDepth <= 0)
       delete this[PROC];
   }
@@ -67,17 +70,13 @@ class Context
   {
     if(val === this)
       throw new Error('Can not set master to yourself');
-    if(val)
-      this[PROC] = val[PROC];
-    else
-      delete this[PROC];
     this[PRIV].master = val;
   }
 
   get headMaster()
   {
-    let result = this;
-    let next = result.master;
+    let result = null;
+    let next = this.master;
     while(next)
     {
       result = next;
@@ -88,9 +87,7 @@ class Context
 
   get processDepth()
   {
-    if(!this.hasOwnProperty(PROC))
-      return 0;
-    return this[PROC].prcDepth;
+    return getProcVars(this).prcDepth;
   }
 
   //===== PROCESS DATA MANAGEMENT =================================================================
