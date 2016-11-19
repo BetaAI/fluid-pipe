@@ -10,7 +10,7 @@ class Source extends Handler
   constructor(config)
   {
     super(config);
-    this._pipeMap = new Map();
+    Reflect.defineProperty(this, '_pipeMap', {configurable:false, writable:false, value: new Map()});
   }
 
   onAdd(cntx)
