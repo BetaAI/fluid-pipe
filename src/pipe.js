@@ -9,6 +9,7 @@ import Context from './context';
 
 const HEAD = Symbol('HEAD');
 const TAIL = Symbol('TAIL');
+const START_DEPTH = Symbol('StartDepth');
 
 const BEG = 'beg';
 const END = 'end';
@@ -33,8 +34,6 @@ class HandlerWrapper
       this.handler.onRemove(this.cntx);
     this.cntx = null;
     this.handler = null;
-    this.beg = null;
-    this.end = null;
   }
 }
 
@@ -159,13 +158,17 @@ class Pipe extends Source
   //===== HANDLER METHODS =========================================================================
   inbound(cntx)
   {
-    this._priv.cntx.master = cntx;
+    const myCntx = this._priv.cntx;
+    myCntx.master = cntx;
+    myCntx[START_DEPTH] = myCntx.processDepth;
     this._process(END, HEAD);
   }
 
   outbound(cntx)
   {
-    this._priv.cntx.master = cntx;
+    const myCntx = this._priv.cntx;
+    myCntx.master = cntx;
+    myCntx[START_DEPTH] = myCntx.processDepth;
     this._process(BEG, TAIL);
   }
 
@@ -180,7 +183,7 @@ class Pipe extends Source
     const reg = this._priv.registry;
     if(reg.has(hId))
       throw new Error(`Handler with id ${hId} already registered`);
-    const wrapper = new HandlerWrapper(handler, this.cntx);
+    const wrapper = new HandlerWrapper(handler, this._priv.cntx);
     reg.set(hId, wrapper);
     return wrapper;
   }
@@ -270,9 +273,16 @@ class Pipe extends Source
   {
     if(cntx.master)
     {
-      const masterPipe = cntx.master.pipe;
-      cntx.master = null;
-      masterPipe._process(dir, this, 1);
+      if(cntx[START_DEPTH] !== cntx.processDepth)
+      {
+        const masterPipe = cntx.master.pipe;
+        masterPipe._process(dir, this, 1);
+      }
+      else
+      {
+        delete cntx[START_DEPTH];
+        cntx.master = null;
+      }
     }
     else
     {
