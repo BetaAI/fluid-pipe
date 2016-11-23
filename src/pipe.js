@@ -250,15 +250,15 @@ class Pipe extends Source
     for(let i = 0; i < batch.length; i++)
     {
       const cur = batch[i];
-      this._process(cur.msg, ...cur.procArgs);
+      this._process(...cur.args);
     }
     priv.timer = priv.queue.length ? setTimeout(this._consumeQueue.bind(this), 0) : null;
   }
 
-  _submit(msg, dir, start, offset = 0)
+  _submit(prc, dir, start, offset = 0)
   {
     const priv = this._priv;
-    priv.queue.push({msg, procArgs:[dir, start, offset]});
+    priv.queue.push({args:[prc, dir, start, offset]});
     if(priv.timer === null)
       priv.timer = setTimeout(this._consumeQueue.bind(this), 0);
   }
