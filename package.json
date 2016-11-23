@@ -4,9 +4,14 @@
   "description": "Runtime mutable pipeline",
   "main": "dist/fluid-pipe.js",
   "module": "src/root.js",
+  "files":
+  [
+    "src",
+    "dist"
+  ],
   "scripts": {
     "clean": "rimraf dist",
-    "build": "webpack",
+    "build": "webpack --env=production",
     "test": "cross-env BABEL_ENV=test mocha --compilers js:babel-core/register"
   },
   "repository": {

@@ -1,7 +1,11 @@
+'use strict';
+
 const webpack = require('webpack');
 const path = require('path');
 
-module.exports =
+console.log('NODE_ENV', process.env.NODE_ENV);
+// console.log('env', env);
+let config =
 {
   entry:['./src/root.js'],
   output:
@@ -18,15 +22,21 @@ module.exports =
   ],
   module:
   {
-    loaders:
+    rules:
     [
       {
         test:/\.js?/,
         exclude:[/node_modules/, /styles/],
         include:path.resolve(__dirname, 'src'),
-        loader:'babel-loader',
+        use:['babel-loader']
       }
     ]
   },
   devtool:'source-map',
+};
+
+module.exports = function(env)
+{
+  console.log('env', env);
+  return config;
 };
