@@ -5,8 +5,10 @@
 
 import chai from 'chai';
 import sinon from 'sinon';
+import chaiAsPromised from 'chai-as-promised';
 const expect = chai.expect;
 chai.should();
+chai.use(chaiAsPromised);
 
 import Handler from '../src/handler';
 import Pipe from '../src/pipe';
@@ -26,30 +28,45 @@ function validateOrder(pipe, order)
   }
 }
 
+function validateSpies(called = [], notCalled = [])
+{
+  for(let i = called.length; --i > 0;)
+  {
+    expect(called[i].calledOnce).to.be.true;
+    expect(called[i].calledAfter(called[i - 1]));
+  }
+  if(called.length)
+    expect(called[0].calledOnce).to.be.true;
+  for(let i = notCalled.length; --i >= 0;)
+  {
+    expect(notCalled[i].called).to.be.false;
+  }
+}
+
 class TestHandler extends Handler
 {
   inbound(cntx)
   {
-    const pd = cntx.processData;
-    if(this.config.reflectIn && !pd[this.id])
-    {
-      pd[this.id] = this;
-      cntx.pipe.processOutbound();
-    }
     console.log(this.id, 'inbound');
+    if(this.config.reflectIn && !cntx[this.id])
+    {
+      cntx[this.id] = this;
+      cntx.process.end();
+      cntx.pipe.processOutbound({}, this, 1);
+    }
     if(this.config.inject)
       cntx.pipe.addAfter(this.config.inject, this);
   }
 
   outbound(cntx)
   {
-    const pd = cntx.processData;
-    if(this.config.reflectOut && !pd[this.id])
-    {
-      pd[this.id] = this;
-      cntx.pipe.processInbound();
-    }
     console.log(this.id, 'outbound');
+    if(this.config.reflectOut && !cntx[this.id])
+    {
+      cntx[this.id] = this;
+      cntx.process.end();
+      cntx.pipe.processInbound({}, this, 1);
+    }
     if(this.config.inject)
       cntx.pipe.addBefore(this.config.inject, this);
   }
@@ -119,12 +136,12 @@ describe('Pipe', function()
     let p1 = new Pipe({id:'p1'});
     let p2 = new Pipe({id:'p2'});
     let p1h1 = new TestHandler({id:'p1h1'});
-    let p1h2 = new TestHandler({id:'p1h2', reflectOut:false});
+    let p1h2 = new TestHandler({id:'p1h2'});
     let p1h3 = new TestHandler({id:'p1h3'});
     p1.addEnd(p1h1).addEnd(p1h2).addEnd(p2).addEnd(p1h3);
     let p2h1 = new TestHandler({id:'p2h1'});
     let p2h2 = new TestHandler({id:'p2h2'});
-    let p2h3 = new TestHandler({id:'p2h3', reflectIn:false});
+    let p2h3 = new TestHandler({id:'p2h3'});
     p2.addEnd(p2h1).addEnd(p2h2).addEnd(p2h3);
 
     let s11i = sinon.spy(p1h1, 'inbound');
@@ -154,30 +171,12 @@ describe('Pipe', function()
     it('inbound propagation works', function()
     {
       p1.processInbound();
-      for(let i = inboundSpies.length; --i >= 0;)
-      {
-        expect(inboundSpies[i].calledOnce).to.be.true;
-        if(i !== 0)
-          expect(inboundSpies[i].calledAfter(inboundSpies[i - 1]));
-      }
-      for(let i = outboundSpies.length; --i >= 0;)
-      {
-        expect(outboundSpies[i].called).to.be.false;
-      }
+      validateSpies(inboundSpies, outboundSpies);
     });
     it('outbound propagation works', function()
     {
       p1.processOutbound();
-      for(let i = outboundSpies.length; --i >= 0;)
-      {
-        expect(outboundSpies[i].calledOnce).to.be.true;
-        if(i !== 0)
-          expect(outboundSpies[i].calledAfter(outboundSpies[i - 1]));
-      }
-      for(let i = inboundSpies.length; --i >= 0;)
-      {
-        expect(inboundSpies[i].called).to.be.false;
-      }
+      validateSpies(outboundSpies, inboundSpies);
     });
     it('pipe modification during message propagation works', function()
     {
@@ -190,24 +189,47 @@ describe('Pipe', function()
       p1h1.config.inject = inject;
       p2h2.config.inject = inject;
       p1.processInbound();
-      for(let i = inboundSpies.length; --i >= 0;)
-      {
-        expect(inboundSpies[i].calledOnce).to.be.true;
-        if(i !== 0)
-          expect(inboundSpies[i].calledAfter(inboundSpies[i - 1]));
-      }
-      for(let i = outboundSpies.length; --i >= 0;)
-      {
-        expect(outboundSpies[i].called).to.be.false;
-      }
+      validateSpies(inboundSpies, outboundSpies);
       expect(injectSpy.calledTwice).to.be.true;
       expect(p1.getHandler(inject)).to.not.exist;
       expect(p1.getHandler(inject)).to.not.exist;
       delete p1h1.config.inject;
       delete p2h2.config.inject;
     });
-    it('process nesting works');
-    it('submit works');
-    it('pipe acts as handler for another pipe');
+    it('process nesting works', function()
+    {
+      p1h1.config.reflectOut = true;
+      p2h3.config.reflectIn = true;
+      p1.processInbound();
+      expect(s11i.calledOnce).to.be.true;
+      expect(s12i.calledTwice).to.be.true;
+      expect(s21i.calledTwice).to.be.true;
+      expect(s22i.calledTwice).to.be.true;
+      expect(s23i.calledTwice).to.be.true;
+      expect(s13i.calledOnce).to.be.true;
+
+      expect(s11o.calledOnce).to.be.true;
+      expect(s12o.calledOnce).to.be.true;
+      expect(s21o.calledOnce).to.be.true;
+      expect(s22o.calledOnce).to.be.true;
+      expect(s23o.called).to.be.false;
+      expect(s13o.called).to.be.false;
+      p1h1.config.reflectOut = false;
+      p2h3.config.reflectIn = false;
+    });
+    it('submit works', function(){
+      const promise = new Promise((resolve) =>
+      {
+        const resolver = new Handler();
+        resolver.inbound = (cntx) =>
+        {
+          cntx.pipe.remove(resolver);
+          resolve();
+        };
+        p1.addEnd(resolver);
+        p1.submitInbound();
+      });
+      return expect(promise).to.be.fulfilled;
+    });
   });
 });
