@@ -3,24 +3,71 @@
  */
 'use strict';
 
-const PRIV = Symbol('priv');
-const PROC = Symbol('proc');
-
-function stkLast(stk)
+class Process
 {
-  const len = stk !== null ? stk.length : 0;
-  if(len === 0)
-    return undefined;
-  return stk[len - 1];
-}
+  constructor(prd = {}, msg = {})
+  {
+    this._prdStack = Array.isArray(prd) ? [...prd] : [prd];
+    this._msgStack = Array.isArray(msg) ? [...msg] : [msg];
+    this._isAlive = true;
+    Reflect.defineProperty(this, 'id', {value:Symbol()});
+  }
 
-function getProcVars(cntx)
-{
-  if(cntx.master)
-    cntx = cntx.headMaster;
-  if(!cntx.hasOwnProperty(PROC))
-    cntx[PROC] = {prdStack:[{}], msgStack:[], prcDepth:0};
-  return cntx[PROC];
+  get isAlive()
+  {
+    return this._isAlive;
+  }
+
+  end()
+  {
+    this._isAlive = false;
+  }
+
+  get data()
+  {
+    const len = this._prdStack.length;
+    return len ? this._prdStack[len - 1] : undefined;
+  }
+
+  getData(offset = 0)
+  {
+    const len = this._prdStack.length - offset;
+    return len > 0 ? this._prdStack[len - 1] : undefined;
+  }
+
+  pushData(obj = {})
+  {
+    this._prdStack.push(obj);
+    return obj;
+  }
+
+  popData()
+  {
+    return this._prdStack.pop();
+  }
+
+  get message()
+  {
+    const len = this._msgStack.length;
+    return len ? this._msgStack[len - 1] : undefined;
+  }
+
+  getMsg(offset = 0)
+  {
+    const len = this._msgStack.length - offset;
+    return len > 0 ? this._msgStack[len - 1] : undefined;
+  }
+
+  pushMsg(obj = {})
+  {
+    this._msgStack.push(obj);
+    return obj;
+  }
+
+  popMsg()
+  {
+    return this._msgStack.pop();
+  }
 }
 
 class Context
@@ -30,47 +77,35 @@ class Context
     const priv =
       {
         pipe:pipe,
-        master:null
+        master:null,
+        prcStack:[],
       };
-    Reflect.defineProperty(this, PRIV, {configurable:false, writable:false, value:priv});
-  }
-
-  beginProcess(msg)
-  {
-    const proc = getProcVars(this);
-    if(msg)
-      proc.msgStack.push(msg);
-    return ++proc.prcDepth;
-  }
-
-  endProcess(val = 0)
-  {
-    const proc = getProcVars(this);
-    val = Math.abs(val);
-    if(val === 0)
-      proc.prcDepth--;
-    else if(proc.prcDepth >= val)
-      proc.prcDepth = val - 1;
-    if(proc.prcDepth <= 0)
-      delete this[PROC];
+    Reflect.defineProperty(this, '_priv', {value:priv});
   }
 
   //===== GETTERS AND SETTERS =====================================================================
   get pipe()
   {
-    return this[PRIV].pipe;
+    return this._priv.pipe;
+  }
+
+  get process()
+  {
+    const stack = this._priv.prcStack;
+    const len = stack.length;
+    return len ? stack[len - 1] : undefined;
   }
   
   get master()
   {
-    return this[PRIV].master;
+    return this._priv.master;
   }
 
-  set master(val)
+  set master(cntx)
   {
-    if(val === this)
+    if(cntx === this)
       throw new Error('Can not set master to yourself');
-    this[PRIV].master = val;
+    this._priv.master = cntx;
   }
 
   get headMaster()
@@ -85,44 +120,24 @@ class Context
     return result;
   }
 
-  get processDepth()
+  //===== PRIVATE METHODS =========================================================================
+  _begPrc(obj = {})
   {
-    return getProcVars(this).prcDepth;
+    let prc;
+    if(obj instanceof Process)
+      prc = obj;
+    else
+      prc = new Process(obj.data, obj.message);
+    this._priv.prcStack.push(prc);
+    return prc;
   }
 
-  //===== PROCESS DATA MANAGEMENT =================================================================
-  get processData()
+  _endPrc(prc)
   {
-
-    return stkLast(getProcVars(this).prdStack);
-  }
-
-  pushProcessData(data = {})
-  {
-    getProcVars(this).prdStack.push(data);
-    return data;
-  }
-
-  popProcessData()
-  {
-    return getProcVars(this).prdStack.pop();
-  }
-
-  //===== MESSAGE DATA MANAGEMENT =================================================================
-  get message()
-  {
-    return stkLast(getProcVars(this).msgStack);
-  }
-
-  pushMessage(data = {})
-  {
-    getProcVars(this).msgStack.push(data);
-    return data;
-  }
-
-  popMessage()
-  {
-    return getProcVars(this).msgStack.pop();
+    const stack = this._priv.prcStack;
+    const idx = stack.indexOf(prc);
+    if(idx >= 0)
+      stack.splice(idx, 1);
   }
 }
 

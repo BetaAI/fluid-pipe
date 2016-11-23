@@ -9,7 +9,6 @@ import Context from './context';
 
 const HEAD = Symbol('HEAD');
 const TAIL = Symbol('TAIL');
-const START_DEPTH = Symbol('StartDepth');
 
 const BEG = 'beg';
 const END = 'end';
@@ -47,7 +46,8 @@ class Pipe extends Source
       cntx: new Context(this),
       registry: new Map(),
       queue: [],
-      timer: null
+      timer: null,
+      externPrc: new Set()
     };
     Reflect.defineProperty(this, '_priv', {configurable:false, writable:false, value:priv});
 
@@ -125,31 +125,25 @@ class Pipe extends Source
     return obj.handler.id !== TAIL ? this._remove(obj) : this;
   }
 
-  processInbound(msg, start = HEAD, offset = 0)
+  processInbound(obj = {}, start = HEAD, offset = 0)
   {
-    const cntx = this._priv.cntx;
-    const depth = cntx.beginProcess(msg);
-    this._process(END, start, offset);
-    cntx.endProcess(depth);
+    this._process(obj, END, start, offset);
     return this;
   }
 
-  processOutbound(msg, start = TAIL, offset = 0)
+  processOutbound(obj ={}, start = TAIL, offset = 0)
   {
-    const cntx = this._priv.cntx;
-    const depth = cntx.beginProcess(msg);
-    this._process(BEG, start, offset);
-    cntx.endProcess(depth);
+    this._process(obj, BEG, start, offset);
     return this;
   }
 
-  submitInbound(msg, start, offset = 0)
+  submitInbound(msg = {}, start = HEAD, offset = 0)
   {
     this._submit(msg, END, start, offset);
     return this;
   }
 
-  submitOutbound(msg, start, offset = 0)
+  submitOutbound(msg = {}, start = TAIL, offset = 0)
   {
     this._submit(msg, BEG, start, offset);
     return this;
@@ -158,18 +152,12 @@ class Pipe extends Source
   //===== HANDLER METHODS =========================================================================
   inbound(cntx)
   {
-    const myCntx = this._priv.cntx;
-    myCntx.master = cntx;
-    myCntx[START_DEPTH] = myCntx.processDepth;
-    this._process(END, HEAD);
+    this._processExtern(cntx, END, HEAD);
   }
 
   outbound(cntx)
   {
-    const myCntx = this._priv.cntx;
-    myCntx.master = cntx;
-    myCntx[START_DEPTH] = myCntx.processDepth;
-    this._process(BEG, TAIL);
+    this._processExtern(cntx, BEG, TAIL);
   }
 
   //===== PRIVATE METHODS =========================================================================
@@ -225,15 +213,23 @@ class Pipe extends Source
     return this;
   }
 
-  _process(dir, start, offset = 0)
+  _process(obj, ...rest)
+  {
+    const cntx = this._priv.cntx;
+    const prc = cntx._begPrc(obj);
+    this._execute(...rest);
+    cntx._endPrc(prc);
+  }
+
+  _execute(dir, start, offset = 0)
   {
     const method = dir === END ? 'inbound' : 'outbound';
     const cntx = this._priv.cntx;
-    const depth = cntx.processDepth;
-    if(depth > 0)
+    const prc = cntx.process;
+    if(prc)
     {
       let wrapper = this._getWrapper(start);
-      while (wrapper !== null && depth === cntx.processDepth)
+      while (wrapper !== null && prc.isAlive)
       {
         if(--offset < 0)
         {
@@ -246,7 +242,7 @@ class Pipe extends Source
     }
   }
 
-  _processQueue(max = Number.MAX_SAFE_INTEGER)
+  _consumeQueue(max = Number.MAX_SAFE_INTEGER)
   {
     max = Math.min(max, this.config.queueLenMax || Number.MAX_SAFE_INTEGER);
     const priv = this._priv;
@@ -254,11 +250,9 @@ class Pipe extends Source
     for(let i = 0; i < batch.length; i++)
     {
       const cur = batch[i];
-      const depth = priv.cntx.beginProcess(cur.msg);
-      this._process(...cur.procArgs);
-      priv.cntx.endProcess(depth);
+      this._process(cur.msg, ...cur.procArgs);
     }
-    priv.timer = priv.queue.length ? setTimeout(Reflect.apply, 0, this._processQueue, this) : null;
+    priv.timer = priv.queue.length ? setTimeout(this._consumeQueue.bind(this), 0) : null;
   }
 
   _submit(msg, dir, start, offset = 0)
@@ -266,30 +260,35 @@ class Pipe extends Source
     const priv = this._priv;
     priv.queue.push({msg, procArgs:[dir, start, offset]});
     if(priv.timer === null)
-      priv.timer = setTimeout(Reflect.apply, 0, this._processQueue, this);
+      priv.timer = setTimeout(this._consumeQueue.bind(this), 0);
+  }
+
+  _processExtern(cntx, dir, start)
+  {
+    const priv = this._priv;
+    priv.cntx.master = cntx;
+    const prc = cntx.process;
+    priv.externPrc.add(prc);
+    this._process(prc, dir, start);
+    priv.externPrc.delete(prc);
+    if(!priv.externPrc.size)
+      priv.cntx.master = null; //TODO: not sure this is right.
   }
 
   _onExit(dir, cntx)
   {
-    if(cntx.master)
+    const prc = cntx.process;
+    if(!this._priv.externPrc.has(prc))
     {
-      if(cntx[START_DEPTH] !== cntx.processDepth)
-      {
-        const masterPipe = cntx.master.pipe;
-        masterPipe._process(dir, this, 1);
-      }
+      let master;
+      if(master = cntx.master)
+        master.pipe._process(prc, dir, this, 1);
       else
       {
-        delete cntx[START_DEPTH];
-        cntx.master = null;
-      }
-    }
-    else
-    {
-      const msg = cntx.message;
-      for(let target of this._pipeMap.values())
-      {
-        target._submit(msg, dir, this, 1);
+        for(let target of this._pipeMap.values())
+        {
+          target._submit(prc, dir, this, 1);
+        }
       }
     }
   }
