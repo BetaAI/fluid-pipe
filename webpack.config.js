@@ -4,7 +4,6 @@ const webpack = require('webpack');
 const path = require('path');
 
 console.log('NODE_ENV', process.env.NODE_ENV);
-// console.log('env', env);
 let config =
 {
   entry:['./src/root.js'],
@@ -38,5 +37,6 @@ let config =
 module.exports = function(env)
 {
   console.log('env', env);
+  process.env.BABEL_ENV = env;
   return config;
 };

@@ -2,6 +2,7 @@
   "env":
   {
     "production": {"presets": [["es2015", {"modules": false}]]},
+    "development": {"presets": ["es2015"]},
     "test": {"presets": ["es2015"]}
   }
 }
