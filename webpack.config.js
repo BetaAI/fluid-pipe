@@ -11,7 +11,7 @@ let config =
   {
     filename:'fluid-pipe.js',
     path:path.resolve(__dirname, 'dist'),
-    library:'fluid-pipe',
+    library:'FluidPipe',
     libraryTarget:'umd',
     publicPath:'/dist/'
   },
