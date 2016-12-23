@@ -6,5 +6,6 @@
 import Pipe from './pipe';
 import Handler from './handler';
 import Source from './source';
+import Util from './util';
 
-export default {Pipe, Handler, Source};
+export default {Pipe, Handler, Source, Util};
