@@ -10,10 +10,8 @@ class Handler
     Reflect.defineProperty(this, 'config',
       {
         configurable:false, writable:false,
-        value:config || {id: Symbol()}
+        value:Object.assign({id:Symbol()}, config)
       });
-    if(!this.config.hasOwnProperty('id'))
-      this.config.id = Symbol();
     Reflect.defineProperty(this.config, 'id', {configurable:false, writable:false});
   }
   
