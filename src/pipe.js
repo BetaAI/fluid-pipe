@@ -3,8 +3,8 @@
  */
 'use strict';
 
-import Source from './source';
-import Handler from './handler';
+import Source from './handler/source';
+import Handler from './handler/handler';
 import Context from './context';
 
 const HEAD = Symbol('HEAD');

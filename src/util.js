@@ -3,8 +3,8 @@
  */
 'use strict';
 
-import Handler from './handler';
-import Source from './source';
+import Handler from './handler/handler';
+import Source from './handler/source';
 
 function toBound(func, that)
 {
@@ -15,8 +15,6 @@ function toBound(func, that)
 
 function genResult(obj, inbound, outbound)
 {
-  if(outbound === undefined)
-    outbound = inbound;
   if(inbound)
     obj.inbound = toBound(inbound, obj);
   if(outbound)
@@ -26,7 +24,7 @@ function genResult(obj, inbound, outbound)
 
 class Util
 {
-  static newHandler(inbound, outbound)
+  static newHandler(inbound, outbound = inbound)
   {
     return genResult(new Handler(), inbound, outbound);
   }
@@ -41,7 +39,7 @@ class Util
     return genResult(new Handler(), null, func);
   }
 
-  static newSource(inbound, outbound)
+  static newSource(inbound, outbound = inbound)
   {
     return genResult(new Source(), inbound, outbound);
   }

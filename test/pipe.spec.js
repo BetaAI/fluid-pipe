@@ -10,7 +10,7 @@ const expect = chai.expect;
 chai.should();
 chai.use(chaiAsPromised);
 
-import Handler from '../src/handler';
+import Handler from '../src/handler/handler';
 import Pipe from '../src/pipe';
 
 function validateOrder(pipe, order)

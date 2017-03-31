@@ -7,7 +7,7 @@ import chai from 'chai';
 const expect = chai.expect;
 chai.should();
 
-import Source from '../src/source';
+import Source from '../src/handler/source';
 
 describe('Source', function()
 {

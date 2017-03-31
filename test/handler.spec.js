@@ -7,7 +7,7 @@ import chai from 'chai';
 const expect = chai.expect;
 chai.should();
 
-import Handler from '../src/handler';
+import Handler from '../src/handler/handler';
 
 describe('Handler', function()
 {
