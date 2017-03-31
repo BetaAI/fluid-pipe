@@ -6,6 +6,7 @@
 import Pipe from './pipe';
 import Handler from './handler/handler';
 import Source from './handler/source';
+import PromiseHandler from './handler/promise';
 import Util from './util';
 
-export default {Pipe, Handler, Source, Util};
+export default {Pipe, Handler, Source, PromiseHandler, Util};
