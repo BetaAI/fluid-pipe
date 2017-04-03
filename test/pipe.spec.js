@@ -47,7 +47,7 @@ class TestHandler extends Handler
 {
   inbound(cntx)
   {
-    console.log(this.id, 'inbound');
+    //console.log(this.id, 'inbound');
     if(this.config.reflectIn && !cntx[this.id])
     {
       cntx[this.id] = this;
@@ -60,7 +60,7 @@ class TestHandler extends Handler
 
   outbound(cntx)
   {
-    console.log(this.id, 'outbound');
+    //console.log(this.id, 'outbound');
     if(this.config.reflectOut && !cntx[this.id])
     {
       cntx[this.id] = this;
