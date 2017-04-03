@@ -24,7 +24,7 @@ class PromiseHandler extends Handler
     {
       const obj = arr[dir];
       if(obj)
-        obj.filter(cntx, obj.accept, obj.reject);
+        obj.filter.call(obj.self, cntx, obj.accept, obj.reject);
     }
   }
 
@@ -32,6 +32,7 @@ class PromiseHandler extends Handler
   {
     const prObj = {};
     prObj.filter = filter;
+    prObj.self = {};
     prObj.promise = new Promise((accept, reject) =>
     {
       prObj.accept = accept;
