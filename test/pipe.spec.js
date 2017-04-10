@@ -127,8 +127,22 @@ describe('Pipe', function()
     {
       pipe.addEnd(h1).addEnd(h2).addEnd(h3).remove(h2);
       validateOrder(pipe, [h1, h3]);
-      pipe.remove(h1);
+      pipe.remove('foo').remove(h1);
       validateOrder(pipe, [h3]);
+    });
+    it('removeBefore works', function()
+    {
+      pipe.addEnd(h1).addEnd(h2).addEnd(h3).removeBefore(h1);
+      validateOrder(pipe, [h1, h2, h3]);
+      pipe.removeBefore('foo').removeBefore(h3);
+      validateOrder(pipe, [h1, h3]);
+    });
+    it('removeAfter works', function()
+    {
+      pipe.addEnd(h1).addEnd(h2).addEnd(h3).removeAfter(h3);
+      validateOrder(pipe, [h1, h2, h3]);
+      pipe.removeAfter('foo').removeAfter(h1);
+      validateOrder(pipe, [h1, h3]);
     });
   });
   describe('Message Propagation', function()
