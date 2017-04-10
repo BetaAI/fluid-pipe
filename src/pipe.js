@@ -91,37 +91,39 @@ class Pipe extends Source
   remove(obj)
   {
     obj = this._getWrapper(obj);
-    const id = obj.handler.id;
-    if(id === HEAD || id === TAIL)
+    if(!obj)
       return this;
-    return this._remove(obj);
+    const id = obj.handler.id;
+    return id !== HEAD && id !== TAIL ? this._remove(obj) : this;
   }
 
   removeBeg()
   {
     const obj = this._getWrapper(HEAD).end;
-    if(obj.handler.id !== TAIL)
-      return this._remove(obj);
-    return this;
+    return obj.handler.id !== TAIL ? this._remove(obj) : this;
   }
 
   removeEnd()
   {
     const obj = this._getWrapper(TAIL).beg;
-    if(obj.handler.id !== HEAD)
-      return this._remove(obj);
-    return this;
+    return obj.handler.id !== HEAD ? this._remove(obj) : this;
   }
 
   removeBefore(obj)
   {
-    obj = this._getWrapper(obj).beg;
+    obj = this._getWrapper(obj);
+    if(!obj)
+      return this;
+    obj = obj.beg;
     return obj.handler.id !== HEAD ? this._remove(obj) : this;
   }
 
   removeAfter(obj)
   {
-    obj = this._getWrapper(obj).end;
+    obj = this._getWrapper(obj);
+    if(!obj)
+      return this;
+    obj = obj.end;
     return obj.handler.id !== TAIL ? this._remove(obj) : this;
   }
 
