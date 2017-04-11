@@ -70,6 +70,11 @@ class Process
   {
     return this._msgStack.pop();
   }
+
+  clone()
+  {
+    return new Process({data:this._prdStack, message:this._msgStack});
+  }
 }
 
 export default Process;
