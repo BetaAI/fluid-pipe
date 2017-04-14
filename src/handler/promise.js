@@ -24,21 +24,15 @@ class PromiseHandler extends Handler
     {
       const obj = arr[dir];
       if(obj)
-        obj.filter.call(obj.self, cntx, obj.accept, obj.reject);
+        obj.filter.call(obj, cntx, obj.accept, obj.reject);
     }
   }
 
   _createPromise(filter, id, ...dirs)
   {
-    const prObj = {};
-    prObj.filter = filter;
-    prObj.self = {};
-    prObj.promise = new Promise((accept, reject) =>
-    {
-      prObj.accept = accept;
-      prObj.reject = reject;
-    });
-    const arr = this.config.prMap.get(id) || [];
+    const prObj = {filter, id};
+    const map = this.config.prMap;
+    const arr = map.get(id) || [];
     for(let i = arr.length; --i >= 0;)
     {
       if(arr[i])
@@ -49,7 +43,12 @@ class PromiseHandler extends Handler
     {
       arr[dir] = prObj;
     }
-    this.config.prMap.set(id, arr);
+    map.set(id, arr);
+    prObj.promise = new Promise((accept, reject) =>
+    {
+      prObj.accept = (val) => {map.delete(id); return accept(val);};
+      prObj.reject = (val) => {map.delete(id); return reject(val);};
+    });
     return prObj.promise;
   }
 
