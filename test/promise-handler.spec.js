@@ -29,7 +29,7 @@ describe('PromiseHandler', function()
     if(!this.results)
       this.results = [];
     this.results.push(cntx.process.message);
-    if(this.results.length == 2)
+    if(this.results.length === 2)
       accept(this.results);
   }
   it('inbound promise resolves on inbound process', function()
@@ -37,7 +37,7 @@ describe('PromiseHandler', function()
     const msg = 'Foo';
     const promise = prh.newInboundPromise(simpleAcceptor, 'Inbound');
     pipe.processInbound(msg);
-    //prh.delPromise('Inbound', msg);
+    expect(prh.getPromise('Inbound')).to.not.be.ok;
     return expect(promise).to.eventually.equal(msg);
   });
   it('inbound promise doesn\'t resolve on outbound process', function()
@@ -45,6 +45,7 @@ describe('PromiseHandler', function()
     const msg = 'Foo';
     const promise = prh.newInboundPromise(simpleAcceptor, 'Inbound');
     pipe.processOutbound(msg);
+    expect(prh.getPromise('Inbound')).to.equal(promise);
     prh.delPromise('Inbound', msg);
     return promise.should.be.rejectedWith(msg);
   });
@@ -53,7 +54,7 @@ describe('PromiseHandler', function()
     const msg = 'Bar';
     const promise = prh.newOutboundPromise(simpleAcceptor, 'Outbound');
     pipe.processOutbound(msg);
-    //prh.delPromise('Outbound', msg);
+    expect(prh.getPromise('Outbound')).to.not.be.ok;
     return expect(promise).to.eventually.equal(msg);
   });
   it('outbound promise doesn\'t resolve on inbound process', function()
@@ -61,6 +62,7 @@ describe('PromiseHandler', function()
     const msg = 'Bar';
     const promise = prh.newOutboundPromise(simpleAcceptor, 'Outbound');
     pipe.processInbound(msg);
+    expect(prh.getPromise('Outbound')).to.equal(promise);
     prh.delPromise('Outbound', msg);
     return promise.should.be.rejectedWith(msg);
   });
@@ -68,9 +70,11 @@ describe('PromiseHandler', function()
   {
     const msgIn = 'Foo';
     const msgOut = 'Bar';
-    const promise = prh.newPromise(complexAcceptor.bind({}));
+    const promise = prh.newPromise(complexAcceptor);
     pipe.submitInbound(msgIn).submitOutbound(msgOut);
-    return expect(promise).to.eventually.deep.equal([msgIn, msgOut]);
+    expect(prh.promise).to.equal(promise);
+    const res = expect(promise).to.eventually.deep.equal([msgIn, msgOut]);
+    return res.then(() => expect(prh.promise).to.not.be.ok);
   });
 });
 
