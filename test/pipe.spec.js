@@ -28,15 +28,19 @@ function validateOrder(pipe, order)
   }
 }
 
-function validateSpies(called = [], notCalled = [])
+function validateSpies(called = [], notCalled = [], testFn = 'calledOnce')
 {
+  const test = typeof testFn === 'string' ?
+    (spy) => {return spy[testFn];} :
+    testFn;
   for(let i = called.length; --i > 0;)
   {
-    expect(called[i].calledOnce).to.be.true;
+    const testVal = test(called[i]);
+    expect(test(called[i])).to.be.true;
     expect(called[i].calledAfter(called[i - 1]));
   }
   if(called.length)
-    expect(called[0].calledOnce).to.be.true;
+    expect(test(called[0])).to.be.true;
   for(let i = notCalled.length; --i >= 0;)
   {
     expect(notCalled[i].called).to.be.false;
@@ -55,7 +59,11 @@ class TestHandler extends Handler
       cntx.pipe.processOutbound({}, this, 1);
     }
     if(this.config.inject)
-      cntx.pipe.addAfter(this.config.inject, this);
+    {
+      const inject = this.config.inject;
+      delete this.config.inject;
+      cntx.pipe.addAfter(inject, this);
+    }
   }
 
   outbound(cntx)
@@ -68,7 +76,11 @@ class TestHandler extends Handler
       cntx.pipe.processInbound({}, this, 1);
     }
     if(this.config.inject)
-      cntx.pipe.addBefore(this.config.inject, this);
+    {
+      const inject = this.config.inject;
+      delete this.config.inject;
+      cntx.pipe.addBefore(inject, this);
+    }
   }
 }
 
@@ -206,9 +218,28 @@ describe('Pipe', function()
       validateSpies(inboundSpies, outboundSpies);
       expect(injectSpy.calledTwice).to.be.true;
       expect(p1.getHandler(inject)).to.not.exist;
-      expect(p1.getHandler(inject)).to.not.exist;
-      delete p1h1.config.inject;
-      delete p2h2.config.inject;
+      expect(p2.getHandler(inject)).to.not.exist;
+      // delete p1h1.config.inject;
+      // delete p2h2.config.inject;
+    });
+    it('handler onAdd/onRemove can push messages into pipe', function()
+    {
+      const inject = new Handler({id:'injectable'});
+      inject.onAdd = (cntx) =>
+      {
+        cntx.pipe.processOutbound();
+      };
+      inject.onRemove = (cntx) =>
+      {
+        cntx.pipe.processOutbound();
+      };
+      const injectAddSpy = sinon.spy(inject, 'onAdd');
+      const injectRemSpy = sinon.spy(inject, 'onRemove');
+      p1.addBeg(inject);
+      p1.remove(inject);
+      validateSpies(outboundSpies, inboundSpies, 'calledTwice');
+      expect(injectAddSpy.calledOnce).to.be.true;
+      expect(injectRemSpy.calledOnce).to.be.true;
     });
     it('process nesting works', function()
     {
