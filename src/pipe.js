@@ -19,8 +19,6 @@ class HandlerWrapper
   {
     if(!handler || !cntx)
       throw new Error(`Invalid handler: ${handler} or context: ${cntx}`);
-    if(handler.onAdd)
-      handler.onAdd(cntx);
     this.handler = handler;
     this.cntx = cntx;
     this.beg = null;
@@ -29,10 +27,9 @@ class HandlerWrapper
   
   destroy()
   {
-    if(this.handler.onRemove)
-      this.handler.onRemove(this.cntx);
     this.cntx = null;
     this.handler = null;
+    //NOTE: beg and end are not cleared here because they are needed during _process if handler is removed
   }
 }
 
@@ -192,11 +189,13 @@ class Pipe extends Source
       throw new Error(`Could not find ${ref} handler in this pipe`);
     if(after)
       refWrp = refWrp.end;
-    const objWrp = this._register(obj);
-    objWrp.beg = refWrp.beg;
-    objWrp.end = refWrp;
-    refWrp.beg.end = objWrp;
-    refWrp.beg = objWrp;
+    const wrapper = this._register(obj);
+    wrapper.beg = refWrp.beg;
+    wrapper.end = refWrp;
+    refWrp.beg.end = wrapper;
+    refWrp.beg = wrapper;
+    if(wrapper.handler.onAdd !== undefined)
+      wrapper.handler.onAdd(this._priv.cntx);
     return this;
   }
 
@@ -208,9 +207,11 @@ class Pipe extends Source
     const id = wrapper.handler.id;
     if(id === HEAD || id === TAIL)
       throw new Error(`Attempting to remove ${id}. This should never happen!`);
+    if(wrapper.handler.onRemove !== undefined)
+      wrapper.handler.onRemove(this._priv.cntx);
     wrapper.beg.end = wrapper.end;
     wrapper.end.beg = wrapper.beg;
-    this._priv.registry.delete(wrapper.handler.id);
+    this._priv.registry.delete(id);
     wrapper.destroy();
     return this;
   }
