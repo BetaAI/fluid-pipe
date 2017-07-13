@@ -7,8 +7,9 @@ class Process
 {
   constructor(obj = {})
   {
+    const hasPrd = obj.data !== undefined;
     const prd = obj.data || {};
-    const msg = obj.message || obj;
+    const msg = obj.message || (hasPrd ? {} : obj);
     this._prdStack = Array.isArray(prd) ? [...prd] : [prd];
     this._msgStack = Array.isArray(msg) ? [...msg] : [msg];
     this._isAlive = true;
