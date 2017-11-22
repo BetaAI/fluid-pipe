@@ -13,12 +13,18 @@ class Process
     this._prdStack = Array.isArray(prd) ? [...prd] : [prd];
     this._msgStack = Array.isArray(msg) ? [...msg] : [msg];
     this._isAlive = true;
+    this._dir = null;
     Reflect.defineProperty(this, 'id', {value:Symbol()});
   }
 
   get isAlive()
   {
     return this._isAlive;
+  }
+  
+  get dir()
+  {
+    return this._dir;
   }
 
   end()

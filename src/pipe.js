@@ -6,12 +6,7 @@
 import Source from './handler/source';
 import Handler from './handler/handler';
 import Context from './context';
-
-const HEAD = Symbol('HEAD');
-const TAIL = Symbol('TAIL');
-
-const BEG = 'beg';
-const END = 'end';
+import {HEAD, TAIL, DIR_OUTBOUND, DIR_INBOUND, INBOUND, OUTBOUND} from './const';
 
 class HandlerWrapper
 {
@@ -50,8 +45,8 @@ class Pipe extends Source
 
     let head = new Handler({id:HEAD});
     let tail = new Handler({id:TAIL});
-    head.outbound = (cntx) => {this._onExit(BEG, cntx)};
-    tail.inbound = (cntx) => {this._onExit(END, cntx)};
+    head.outbound = (cntx) => {this._onExit(DIR_OUTBOUND, cntx)};
+    tail.inbound = (cntx) => {this._onExit(DIR_INBOUND, cntx)};
     head = this._register(head);
     tail = this._register(tail);
     head.end = tail;
@@ -126,37 +121,37 @@ class Pipe extends Source
 
   processInbound(obj = {}, start = HEAD, offset = 0)
   {
-    this._process(obj, END, start, offset);
+    this._process(obj, DIR_INBOUND, start, offset);
     return this;
   }
 
   processOutbound(obj ={}, start = TAIL, offset = 0)
   {
-    this._process(obj, BEG, start, offset);
+    this._process(obj, DIR_OUTBOUND, start, offset);
     return this;
   }
 
   submitInbound(msg = {}, start = HEAD, offset = 0)
   {
-    this._submit(msg, END, start, offset);
+    this._submit(msg, DIR_INBOUND, start, offset);
     return this;
   }
 
   submitOutbound(msg = {}, start = TAIL, offset = 0)
   {
-    this._submit(msg, BEG, start, offset);
+    this._submit(msg, DIR_OUTBOUND, start, offset);
     return this;
   }
 
   //===== HANDLER METHODS =========================================================================
   inbound(cntx)
   {
-    this._processExtern(cntx, END, HEAD);
+    this._processExtern(cntx, DIR_INBOUND, HEAD);
   }
 
   outbound(cntx)
   {
-    this._processExtern(cntx, BEG, TAIL);
+    this._processExtern(cntx, DIR_OUTBOUND, TAIL);
   }
 
   //===== PRIVATE METHODS =========================================================================
@@ -226,12 +221,13 @@ class Pipe extends Source
 
   _execute(dir, start, offset = 0)
   {
-    const method = dir === END ? 'inbound' : 'outbound';
+    const method = dir === DIR_INBOUND ? INBOUND : OUTBOUND;
     const cntx = this._priv.cntx;
     const prc = cntx.process;
     if(prc)
     {
       let wrapper = this._getWrapper(start);
+      prc._dir = method;
       while (wrapper !== null && prc.isAlive)
       {
         if(--offset < 0)
@@ -242,6 +238,7 @@ class Pipe extends Source
         }
         wrapper = wrapper[dir];
       }
+      prc._dir = null;
     }
   }
 
@@ -272,7 +269,9 @@ class Pipe extends Source
     priv.cntx.master = cntx;
     const prc = cntx.process;
     priv.externPrc.add(prc);
+    const externDir = prc._dir;
     this._process(prc, dir, start);
+    prc._dir = externDir;
     priv.externPrc.delete(prc);
     if(!priv.externPrc.size)
       priv.cntx.master = null; //TODO: not sure this is right.

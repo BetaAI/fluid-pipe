@@ -12,6 +12,7 @@ chai.use(chaiAsPromised);
 
 import Handler from '../src/handler/handler';
 import Pipe from '../src/pipe';
+import Constants from '../src/const';
 
 function validateOrder(pipe, order)
 {
@@ -51,7 +52,8 @@ class TestHandler extends Handler
 {
   inbound(cntx)
   {
-    //console.log(this.id, 'inbound');
+    // console.log(this.id, 'inbound');
+    expect(cntx.process.dir).to.equal(Constants.INBOUND);
     if(this.config.reflectIn && !cntx[this.id])
     {
       cntx[this.id] = this;
@@ -68,7 +70,8 @@ class TestHandler extends Handler
 
   outbound(cntx)
   {
-    //console.log(this.id, 'outbound');
+    // console.log(this.id, 'outbound');
+    expect(cntx.process.dir).to.equal(Constants.OUTBOUND);
     if(this.config.reflectOut && !cntx[this.id])
     {
       cntx[this.id] = this;
