@@ -1,8 +1,49 @@
 {
-  "env":
-  {
-    "production": {"presets": [["es2015", {"modules": false}]]},
-    "development": {"presets": ["es2015"]},
-    "test": {"presets": ["es2015"]}
+  "env": {
+    "production":{
+      "presets":[
+        [
+          "env",
+          {
+            "targets":{
+              "browsers":["last 2 Chrome versions", "last 2 Edge versions", "last 2 Firefox versions"]
+            },
+            "modules":false,
+            "debug":false,
+            "useBuiltIns":true
+          }
+        ]
+      ]
+    },
+    "development":{
+      "presets":[
+        [
+          "env",
+          {
+            "targets":{
+              "browsers":["last 2 Chrome versions", "last 2 Edge versions", "last 2 Firefox versions"]
+            },
+            "modules":false,
+            "debug":true,
+            "useBuiltIns":true
+          }
+        ]
+      ]
+    },
+    "test":{
+      "presets":[
+        [
+          "env",
+          {
+            "targets":{
+              "node":"current"
+            },
+            "debug":true,
+            "useBuiltIns":true
+          }
+        ]
+      ],
+      "plugins": ["transform-object-rest-spread"]
+    }
   }
 }

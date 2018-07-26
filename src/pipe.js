@@ -1,299 +1,372 @@
-/**
- * Created by Dmitri on 4/24/2016.
- */
 'use strict';
 
-import Source from './handler/source';
-import Handler from './handler/handler';
-import Context from './context';
-import {HEAD, TAIL, DIR_OUTBOUND, DIR_INBOUND, INBOUND, OUTBOUND} from './const';
+import { Source } from 'src/handler/source';
+import { Handler } from 'src/handler/handler';
+import { Process } from 'src/process';
 
-class HandlerWrapper
+/*
+HEAD|BEG >>>> inbound  >>>> TAIL|END
+HEAD|BEG <<<< outbound <<<< TAIL|END
+*/
+//******************************************************************************
+class
+  HandlerWrapper
 {
-  constructor(handler, cntx)
-  {
-    if(!handler || !cntx)
-      throw new Error(`Invalid handler: ${handler} or context: ${cntx}`);
-    this.handler = handler;
-    this.cntx = cntx;
-    this.beg = null;
-    this.end = null;
-  }
-  
-  destroy()
-  {
-    this.cntx = null;
-    this.handler = null;
-    //NOTE: beg and end are not cleared here because they are needed during _process if handler is removed
-  }
+//==============================================================================
+constructor(handler)
+{
+  if(!(handler instanceof Handler))
+    throw new Error(`Invalid handler: ${handler}`);
+  this.handler = handler;
+  this.outbound = null;
+  this.inbound = null;
 }
-
-class Pipe extends Source
+//==============================================================================
+}//HandlerWrapper
+//******************************************************************************
+export class
+  PipeIterator
 {
-  constructor(config)
+//==============================================================================
+constructor(pipe, cur)
+{
+  this._cur = cur;
+  this.pipe = pipe;
+}
+//==============================================================================
+next(inbound = true)
+{
+  const head = this.pipe._head;
+  const tail = this.pipe._tail;
+  if(this._cur === undefined)
   {
-    super(config);
-    let priv =
+    this._cur = inbound ? head : tail;
+    return {done: false, value: this._cur.handler};
+  }
+  do
+  {
+    this._cur = inbound ? this._cur.inbound : this._cur.outbound;
+  }
+  while(this._cur !== null && !this._cur.handler);
+  const done = this._cur === null;
+  return {done, value: done ? undefined : this._cur.handler}
+}
+//==============================================================================
+[Symbol.iterator]()
+{
+  return this;
+}
+//==============================================================================
+}//PipeIterator
+//******************************************************************************
+class
+  PipeHead
+extends
+  Handler
+{
+//==============================================================================
+outbound(process)
+{
+  if(process._cntxStack.length === 1)
+  {
+    process.endContext();
+    const self = this.config.pipe;
+    for(let pipe of self._pipes)
     {
-      cntx: new Context(this),
-      registry: new Map(),
-      queue: [],
-      timer: null,
-      externPrc: new Set()
-    };
-    Reflect.defineProperty(this, '_priv', {configurable:false, writable:false, value:priv});
-
-    let head = new Handler({id:HEAD});
-    let tail = new Handler({id:TAIL});
-    head.outbound = (cntx) => {this._onExit(DIR_OUTBOUND, cntx)};
-    tail.inbound = (cntx) => {this._onExit(DIR_INBOUND, cntx)};
-    head = this._register(head);
-    tail = this._register(tail);
-    head.end = tail;
-    tail.beg = head;
-  }
-
-  //===== PUBLIC METHODS ==========================================================================
-  getHandler(obj)
-  {
-    const wrapper = this._getWrapper(obj);
-    return wrapper !== null ? wrapper.handler : null;
-  }
-
-  addBeg(obj)
-  {
-    return this._add(obj, HEAD, true);
-  }
-
-  addEnd(obj)
-  {
-    return this._add(obj, TAIL);
-  }
-
-  addBefore(obj, ref)
-  {
-    return this._add(obj, ref);
-  }
-
-  addAfter(obj, ref)
-  {
-    return this._add(obj, ref, true);
-  }
-
-  remove(obj)
-  {
-    obj = this._getWrapper(obj);
-    if(!obj)
-      return this;
-    const id = obj.handler.id;
-    return id !== HEAD && id !== TAIL ? this._remove(obj) : this;
-  }
-
-  removeBeg()
-  {
-    const obj = this._getWrapper(HEAD).end;
-    return obj.handler.id !== TAIL ? this._remove(obj) : this;
-  }
-
-  removeEnd()
-  {
-    const obj = this._getWrapper(TAIL).beg;
-    return obj.handler.id !== HEAD ? this._remove(obj) : this;
-  }
-
-  removeBefore(obj)
-  {
-    obj = this._getWrapper(obj);
-    if(!obj)
-      return this;
-    obj = obj.beg;
-    return obj.handler.id !== HEAD ? this._remove(obj) : this;
-  }
-
-  removeAfter(obj)
-  {
-    obj = this._getWrapper(obj);
-    if(!obj)
-      return this;
-    obj = obj.end;
-    return obj.handler.id !== TAIL ? this._remove(obj) : this;
-  }
-
-  processInbound(obj = {}, start = HEAD, offset = 0)
-  {
-    this._process(obj, DIR_INBOUND, start, offset);
-    return this;
-  }
-
-  processOutbound(obj ={}, start = TAIL, offset = 0)
-  {
-    this._process(obj, DIR_OUTBOUND, start, offset);
-    return this;
-  }
-
-  submitInbound(msg = {}, start = HEAD, offset = 0)
-  {
-    this._submit(msg, DIR_INBOUND, start, offset);
-    return this;
-  }
-
-  submitOutbound(msg = {}, start = TAIL, offset = 0)
-  {
-    this._submit(msg, DIR_OUTBOUND, start, offset);
-    return this;
-  }
-
-  //===== HANDLER METHODS =========================================================================
-  inbound(cntx)
-  {
-    this._processExtern(cntx, DIR_INBOUND, HEAD);
-  }
-
-  outbound(cntx)
-  {
-    this._processExtern(cntx, DIR_OUTBOUND, TAIL);
-  }
-
-  //===== PRIVATE METHODS =========================================================================
-  _register(handler)
-  {
-    if(!handler || handler === this)
-      throw new Error(`Cannot register ${handler}`);
-    const hId = handler.id;
-    if(!hId)
-      throw new Error(`Handler with invalid id ${hId}`);
-    const reg = this._priv.registry;
-    if(reg.has(hId))
-      throw new Error(`Handler with id ${hId} already registered`);
-    const wrapper = new HandlerWrapper(handler, this._priv.cntx);
-    reg.set(hId, wrapper);
-    return wrapper;
-  }
-
-  _getWrapper(obj)
-  {
-    if(obj instanceof HandlerWrapper)
-      return obj.cntx === this._priv.cntx ? obj : null;
-    return this._priv.registry.get(obj.id || obj) || null;
-  }
-
-  _add(obj, ref, after = false)
-  {
-    let refWrp = this._getWrapper(ref);
-    if(refWrp === null)
-      throw new Error(`Could not find ${ref} handler in this pipe`);
-    if(after)
-      refWrp = refWrp.end;
-    const wrapper = this._register(obj);
-    wrapper.beg = refWrp.beg;
-    wrapper.end = refWrp;
-    refWrp.beg.end = wrapper;
-    refWrp.beg = wrapper;
-    if(wrapper.handler.onAdd !== undefined)
-      wrapper.handler.onAdd(this._priv.cntx);
-    return this;
-  }
-
-  _remove(obj)
-  {
-    const wrapper = this._getWrapper(obj);
-    if(wrapper === null)
-      throw new Error(`Could not find ${obj} handler in this pipe`);
-    const id = wrapper.handler.id;
-    if(id === HEAD || id === TAIL)
-      throw new Error(`Attempting to remove ${id}. This should never happen!`);
-    if(wrapper.handler.onRemove !== undefined)
-      wrapper.handler.onRemove(this._priv.cntx);
-    wrapper.beg.end = wrapper.end;
-    wrapper.end.beg = wrapper.beg;
-    this._priv.registry.delete(id);
-    wrapper.destroy();
-    return this;
-  }
-
-  _process(obj, ...rest)
-  {
-    const cntx = this._priv.cntx;
-    const prc = cntx._begPrc(obj);
-    this._execute(...rest);
-    cntx._endPrc(prc);
-  }
-
-  _execute(dir, start, offset = 0)
-  {
-    const method = dir === DIR_INBOUND ? INBOUND : OUTBOUND;
-    const cntx = this._priv.cntx;
-    const prc = cntx.process;
-    if(prc)
-    {
-      let wrapper = this._getWrapper(start);
-      prc._dir = method;
-      while (wrapper !== null && prc.isAlive)
-      {
-        if(--offset < 0)
-        {
-          const handler = wrapper.handler;
-          if (handler && handler[method] instanceof Function)
-            handler[method](cntx);
-        }
-        wrapper = wrapper[dir];
-      }
-      prc._dir = null;
-    }
-  }
-
-  _consumeQueue(max = Number.MAX_SAFE_INTEGER)
-  {
-    max = Math.min(max, this.config.queueLenMax || Number.MAX_SAFE_INTEGER);
-    const priv = this._priv;
-    const batch = priv.queue.splice(0, max);
-    for(let i = 0; i < batch.length; i++)
-    {
-      const cur = batch[i];
-      this._process(...cur.args);
-    }
-    priv.timer = priv.queue.length ? setTimeout(this._consumeQueue.bind(this), 0) : null;
-  }
-
-  _submit(prc, dir, start, offset = 0)
-  {
-    const priv = this._priv;
-    priv.queue.push({args:[prc, dir, start, offset]});
-    if(priv.timer === null)
-      priv.timer = setTimeout(this._consumeQueue.bind(this), 0);
-  }
-
-  _processExtern(cntx, dir, start)
-  {
-    const priv = this._priv;
-    priv.cntx.master = cntx;
-    const prc = cntx.process;
-    priv.externPrc.add(prc);
-    const externDir = prc._dir;
-    this._process(prc, dir, start);
-    prc._dir = externDir;
-    priv.externPrc.delete(prc);
-    if(!priv.externPrc.size)
-      priv.cntx.master = null; //TODO: not sure this is right.
-  }
-
-  _onExit(dir, cntx)
-  {
-    const prc = cntx.process;
-    if(!this._priv.externPrc.has(prc))
-    {
-      let master;
-      if(master = cntx.master)
-        master.pipe._process(prc, dir, this, 1);
-      else
-      {
-        for(let target of this._pipeMap.values())
-        {
-          target._submit(prc, dir, this, 1);
-        }
-      }
+      const cntx = pipe.getHandlerIterator(self);
+      process.begContext(cntx);
+      process.run();
     }
   }
 }
-
-export default Pipe;
+//==============================================================================
+}//PipeHead
+//******************************************************************************
+class
+  PipeTail
+extends
+  Handler
+{
+//==============================================================================
+inbound(process)
+{
+  if(process._cntxStack.length === 1)
+  {
+    process.endContext();
+    const self = this.config.pipe;
+    for(let pipe of self._pipes)
+    {
+      const cntx = pipe.getHandlerIterator(self);
+      process.begContext(cntx);
+      process.run();
+    }
+  }
+}
+//==============================================================================
+}//PipeTail
+//******************************************************************************
+const HEAD = Symbol('HEAD');
+const TAIL = Symbol('TAIL');
+function defTimer(fn)
+{
+  return setTimeout(fn, 0);
+}
+//******************************************************************************
+export class
+  Pipe
+extends
+  Source
+{
+//==============================================================================
+constructor(config)
+{
+  super(config);
+  this._hreg = new Map();
+  const HeadCLS = this.config.headClass || PipeHead;
+  const TailCLS = this.config.tailClass || PipeTail;
+  this._head = new HandlerWrapper(new HeadCLS({id: HEAD, pipe: this}));
+  this._tail = new HandlerWrapper(new TailCLS({id: TAIL, pipe: this}));
+  this._head.inbound = this._tail;
+  this._tail.outbound = this._head;
+  this._queue = [];
+  this._timer = this.config.timer || defTimer;
+  this._timerFunc = this._consumeQueue.bind(this);
+  this._timerNext = undefined;
+  this.data = {};
+}
+//==============================================================================
+_register(handler)
+{
+  if(handler === this || !(handler instanceof Handler))
+    throw new Error(`Can't register handler: ${handler}`);
+  const id = handler.id;
+  if(this._hreg.has(id))
+    throw new Error(`Handler with id ${id} already registered`);
+  const wrapper = new HandlerWrapper(handler);
+  this._hreg.set(id, wrapper);
+  return wrapper;
+}
+//==============================================================================
+_toWrapper(obj)
+{
+  if(obj instanceof HandlerWrapper)
+    return obj;
+  if(obj instanceof Handler)
+    return this._hreg.get(obj.id);
+  return this._hreg.get(obj);
+}
+//==============================================================================
+getHandler(id)
+{
+  const wrapper = this._toWrapper(id);
+  return wrapper ? wrapper.handler : undefined;
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+getHandlerBefore(ref, offset = 0)
+{
+  let wrapper = this._toWrapper(ref);
+  if(!wrapper)
+    return undefined;
+  do
+  {
+    wrapper = wrapper.outbound;
+  }
+  while(--offset >= 0
+    && wrapper !== null
+    && wrapper !== this._head);
+  return wrapper === this._head ? undefined : wrapper.handler;
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+getHandlerAfter(ref, offset = 0)
+{
+  let wrapper = this._toWrapper(ref);
+  if(!wrapper)
+    return undefined;
+  do
+  {
+    wrapper = wrapper.inbound;
+  }
+  while(--offset >= 0
+    && wrapper !== null
+    && wrapper !== this._tail);
+  return wrapper === this._tail ? undefined : wrapper.handler;
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+getHandlerArray()
+{
+  const result = [];
+  let wrapper = this._head.inbound;
+  while(wrapper !== this._tail)
+  {
+    result.push(wrapper.handler);
+    wrapper = wrapper.inbound;
+  }
+  return result;
+}
+//==============================================================================
+_add(handler, tail)
+{
+  const head = tail.outbound;
+  const wrapper = this._register(handler);
+  wrapper.outbound = head;
+  wrapper.inbound = tail;
+  head.inbound = wrapper;
+  tail.outbound = wrapper;
+  handler.onAdd(this);
+  return this;
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+addHead(handler)
+{
+  return this._add(handler, this._head.inbound);
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+addTail(handler)
+{
+  return this._add(handler, this._tail);
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+addBefore(handler, ref)
+{
+  const wrapper = this._toWrapper(ref);
+  if(!wrapper)
+    throw new Error(`Could not find ${ref} handler`);
+  return this._add(handler, wrapper);
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+addAfter(handler, ref)
+{
+  const wrapper = this._toWrapper(ref);
+  if(!wrapper)
+    throw new Error(`Could not find ${ref} handler`);
+  return this._add(handler, wrapper.inbound);
+}
+//==============================================================================
+_remove(wrapper)
+{
+  const handler = wrapper.handler;
+  const id = handler.id;
+  const head = wrapper.outbound;
+  const tail = wrapper.inbound;
+  handler.onRemove(this);
+  this._hreg.delete(id);
+  head.inbound = tail;
+  tail.outbound = head;
+  wrapper.handler = undefined;
+  return this;
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+remove(obj)
+{
+  const wrapper = this._toWrapper(obj);
+  if(!wrapper)
+    return this;
+  return this._remove(wrapper);
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+removeHead()
+{
+  if(this._head.inbound !== this._tail)
+    return this._remove(this._head.inbound);
+  return this;
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+removeTail()
+{
+  if(this._tail.outbound !== this._head)
+    return this._remove(this._tail.outbound);
+  return this;
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+removeBefore(ref)
+{
+  const wrapper = this._toWrapper(ref);
+  if(!wrapper)
+    throw new Error(`Could not find ${ref} handler`);
+  if(wrapper.outbound === this._head)
+    return this;
+  return this._remove(wrapper.outbound);
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+removeAfter(ref)
+{
+  const wrapper = this._toWrapper(ref);
+  if(!wrapper)
+    throw new Error(`Could not find ${ref} handler`);
+  if(wrapper.inbound === this._tail)
+    return this;
+  return this._remove(wrapper.inbound);
+}
+//==============================================================================
+getHandlerIterator(ref)
+{
+  if(ref === this._head || ref === this._tail)
+    return new PipeIterator(this);
+  return new PipeIterator(this, this._toWrapper(ref));
+}
+//==============================================================================
+inbound(process)
+{
+  process.begContext(this);
+}
+//==============================================================================
+outbound(process)
+{
+  process.begContext(this);
+}
+//==============================================================================
+process(process)
+{
+  if(process.pipe !== this)
+  {
+    process.begContext(this);
+    if(!process.active)
+      process.run();
+  }
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+processInbound(message = {}, ref = this._head)
+{
+  const cntx = this.getHandlerIterator(ref);
+  const process = new Process([message], [], [cntx]);
+  process.run();
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+processOutbound(message = {}, ref = this._tail)
+{
+  const cntx = this.getHandlerIterator(ref);
+  const process = new Process([message], [], [cntx], false);
+  process.run();
+}
+//==============================================================================
+_consumeQueue()
+{
+  const queue = this._queue;
+  this._queue = [];
+  this._timerNext = undefined;
+  for(let process of queue)
+  {
+    process.run();
+  }
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+submitInbound(message = {}, ref = this._head)
+{
+  const cntx = this.getHandlerIterator(ref);
+  const process = new Process([message], [], [cntx], true);
+  this._queue.push(process);
+  if(this._timerNext === undefined)
+    this._timerNext = this._timer(this._timerFunc);
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+submitOutbound(message = {}, ref = this._tail)
+{
+  const cntx = this.getHandlerIterator(ref);
+  const process = new Process([message], [], [cntx], false);
+  this._queue.push(process);
+  if(this._timerNext === undefined)
+    this._timerNext = this._timer(this._timerFunc);
+}
+//==============================================================================
+}//Pipe
+//******************************************************************************

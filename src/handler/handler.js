@@ -1,24 +1,39 @@
-/**
- * Created by Dmitri on 4/24/2016.
- */
 'use strict';
 
-class Handler
+//******************************************************************************
+export class
+  Handler
 {
-  constructor(config)
-  {
-    Reflect.defineProperty(this, 'config',
-      {
-        configurable:false, writable:false,
-        value:Object.assign({id:Symbol()}, config)
-      });
-    Reflect.defineProperty(this.config, 'id', {configurable:false, writable:false});
-  }
-  
-  get id()
-  {
-    return this.config.id;
-  }
+//==============================================================================
+constructor(config)
+{
+  this.config = Object.assign({id:Symbol()}, config);
 }
-
-export default Handler;
+//==============================================================================
+get id()
+{
+  return this.config.id;
+}
+//==============================================================================
+onAdd(pipe)
+{
+  //Intentional NO-OP
+}
+//==============================================================================
+onRemove(pipe)
+{
+  //Intentional NO-OP
+}
+//==============================================================================
+inbound(process)
+{
+  //Intentional NO-OP
+}
+//==============================================================================
+outbound(process)
+{
+  //Intentional NO-OP
+}
+//==============================================================================
+}//Handler
+//******************************************************************************

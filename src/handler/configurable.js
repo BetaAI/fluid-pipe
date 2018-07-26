@@ -4,26 +4,24 @@ import { Handler } from 'src/handler/handler';
 
 //******************************************************************************
 export class
-  Source
+  ConfigurableHandler
 extends
   Handler
 {
 //==============================================================================
-constructor(config)
+inbound(process)
 {
-  super(config);
-  this._pipes = new Set();
+  const fn = this.config.inbound;
+  if(fn instanceof Function)
+    fn.call(this, process);
 }
 //==============================================================================
-onAdd(pipe)
+outbound(process)
 {
-  this._pipes.add(pipe);
+  const fn = this.config.outbound;
+  if(fn instanceof Function)
+    fn.call(this, process);
 }
 //==============================================================================
-onRemove(pipe)
-{
-  this._pipes.delete(pipe);
-}
-//==============================================================================
-}//Source
+}//Handler
 //******************************************************************************
