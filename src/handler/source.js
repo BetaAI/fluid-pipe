@@ -1,6 +1,6 @@
 'use strict';
 
-import { Handler } from 'src/handler/handler';
+import { Handler } from 'handler/handler';
 
 //******************************************************************************
 export class

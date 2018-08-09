@@ -1,6 +1,6 @@
 'use strict';
 
-import {Pipe, PipeIterator} from 'src/pipe';
+import {Pipe, PipeIterator} from 'core/pipe';
 
 //******************************************************************************
 const BIT_ACTIVE = 0;
@@ -8,6 +8,21 @@ const BIT_DIR = 1;
 
 const MASK_ACTIVE = 1 << BIT_ACTIVE;
 const MASK_DIR = 1 << BIT_DIR;
+
+function shallowCloneArray(src)
+{
+  const len = src.length;
+  const result = new Array(len);
+  for(let i = len; --i >= 0;)
+  {
+    const cur = src[i];
+    if(cur !== null && typeof cur === 'object')
+      result[i] = Object.assign({}, cur);
+    else
+      result[i] = cur;
+  }
+  return result
+}
 //******************************************************************************
 export class
   Process
@@ -120,7 +135,7 @@ pushMessage(val)
   return this;
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-popMessage(val)
+popMessage()
 {
   const result = this._msgStack.pop();
   if(this._msgStack.length === 0)
@@ -132,6 +147,12 @@ get pipe()
 {
   const len = this._cntxStack.length;
   return len > 0 ? this._cntxStack[len - 1].pipe : undefined;
+}
+//==============================================================================
+get handler()
+{
+  const len = this._cntxStack.length;
+  return len > 0 ? this._cntxStack[len - 1].cur : undefined;
 }
 //==============================================================================
 _nextHandler()
@@ -186,6 +207,23 @@ terminate()
 {
   this._flags &= ~MASK_ACTIVE;
   this._cntxStack.length = 0;
+}
+//==============================================================================
+clone()
+{
+  const dataClone = shallowCloneArray(this._dataStack);
+  const msgClone = shallowCloneArray(this._msgStack);
+  const cntxClone = [];
+  for(let cntx of this._cntxStack)
+  {
+    cntxClone.push(cntx.clone());
+  }
+  const result = new Process();
+  result._dataStack = dataClone;
+  result._msgStack = msgClone;
+  result._cntxStack = cntxClone;
+  result._flags = this._flags;
+  return result;
 }
 //==============================================================================
 }//Process

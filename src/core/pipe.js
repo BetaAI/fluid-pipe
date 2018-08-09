@@ -1,8 +1,8 @@
 'use strict';
 
-import { Source } from 'src/handler/source';
-import { Handler } from 'src/handler/handler';
-import { Process } from 'src/process';
+import { Source } from 'handler/source';
+import { Handler } from 'handler/handler';
+import { Process } from 'core/process';
 
 /*
 HEAD|BEG >>>> inbound  >>>> TAIL|END
@@ -30,31 +30,43 @@ export class
 //==============================================================================
 constructor(pipe, cur)
 {
-  this._cur = cur;
+  this.cur = cur;
   this.pipe = pipe;
+}
+//==============================================================================
+current(inbound = true)
+{
+  if(this.cur === undefined)
+    return inbound ? this.pipe._head : this.pipe._tail; 
+  return this.cur;
 }
 //==============================================================================
 next(inbound = true)
 {
   const head = this.pipe._head;
   const tail = this.pipe._tail;
-  if(this._cur === undefined)
+  if(this.cur === undefined)
   {
-    this._cur = inbound ? head : tail;
-    return {done: false, value: this._cur.handler};
+    this.cur = inbound ? head : tail;
+    return {done: false, value: this.cur.handler};
   }
   do
   {
-    this._cur = inbound ? this._cur.inbound : this._cur.outbound;
+    this.cur = inbound ? this.cur.inbound : this.cur.outbound;
   }
-  while(this._cur !== null && !this._cur.handler);
-  const done = this._cur === null;
-  return {done, value: done ? undefined : this._cur.handler}
+  while(this.cur !== null && !this.cur.handler);
+  const done = this.cur === null;
+  return {done, value: done ? undefined : this.cur.handler}
 }
 //==============================================================================
 [Symbol.iterator]()
 {
   return this;
+}
+//==============================================================================
+clone()
+{
+  return new PipeIterator(this.pipe, this.cur);
 }
 //==============================================================================
 }//PipeIterator

@@ -3,7 +3,7 @@
 import chai from 'chai';
 import sinon from 'sinon';
 
-import { ConfigurableHandler, Process } from 'src/index';
+import { ConfigurableHandler, Process } from 'index';
 
 //******************************************************************************
 const expect = chai.expect;

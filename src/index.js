@@ -1,8 +1,8 @@
 'use strict';
 
-export * from 'src/handler/handler';
-export * from 'src/handler/source';
-export * from 'src/handler/configurable';
+export * from 'handler/handler';
+export * from 'handler/source';
+export * from 'handler/configurable';
 
-export * from 'src/pipe';
-export * from 'src/process';
+export * from 'core/pipe';
+export * from 'core/process';

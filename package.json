@@ -2,11 +2,10 @@
   "name": "fluid-pipe",
   "version": "0.1.0",
   "description": "Runtime mutable pipeline",
-  "main": "dist/fluid-pipe.lib.js",
-  "module": "src/index.js",
+  "main": "lib/umd/fluid-pipe.lib.js",
+  "module": "lib/esm/index.js",
   "files": [
-    "src",
-    "dist"
+    "lib"
   ],
   "scripts": {
     "build:dev": "webpack --env=development",
@@ -28,6 +27,7 @@
   },
   "homepage": "https://github.com/BetaAI/fluid-pipe#readme",
   "devDependencies": {
+    "babel-cli": "^6.26.0",
     "babel-core": "^6.26.3",
     "babel-loader": "^7.1.5",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",

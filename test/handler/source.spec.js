@@ -3,7 +3,7 @@
 import chai from 'chai';
 import sinon from 'sinon';
 
-import { Source, Pipe } from 'src/index';
+import { Source, Pipe } from 'index';
 
 //******************************************************************************
 const expect = chai.expect;

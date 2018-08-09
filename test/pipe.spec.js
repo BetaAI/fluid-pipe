@@ -3,8 +3,8 @@
 import chai from 'chai';
 import sinon from 'sinon';
 
-import { Pipe } from 'src/pipe';
-import { Handler } from 'src/handler/handler';
+import { Pipe } from 'core/pipe';
+import { Handler } from 'handler/handler';
 
 //******************************************************************************
 const expect = chai.expect;

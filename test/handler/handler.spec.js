@@ -1,8 +1,9 @@
 'use strict';
 
 import chai from 'chai';
+import { Handler } from 'index';
 
-import { Handler } from 'src/index';
+// import { Handler } from 'index';
 
 //******************************************************************************
 const expect = chai.expect;
