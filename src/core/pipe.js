@@ -337,17 +337,17 @@ process(process)
   }
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-processInbound(message = {}, ref = this._head)
+processInbound(message = {}, data = {}, ref = this._head)
 {
   const cntx = this.getHandlerIterator(ref);
-  const process = new Process([message], [], [cntx]);
+  const process = new Process([message], [data], [cntx]);
   process.run();
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-processOutbound(message = {}, ref = this._tail)
+processOutbound(message = {}, data = {}, ref = this._tail)
 {
   const cntx = this.getHandlerIterator(ref);
-  const process = new Process([message], [], [cntx], false);
+  const process = new Process([message], [data], [cntx], false);
   process.run();
 }
 //==============================================================================
@@ -362,19 +362,19 @@ _consumeQueue()
   }
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-submitInbound(message = {}, ref = this._head)
+submitInbound(message = {}, data = {}, ref = this._head)
 {
   const cntx = this.getHandlerIterator(ref);
-  const process = new Process([message], [], [cntx], true);
+  const process = new Process([message], [data], [cntx], true);
   this._queue.push(process);
   if(this._timerNext === undefined)
     this._timerNext = this._timer(this._timerFunc);
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-submitOutbound(message = {}, ref = this._tail)
+submitOutbound(message = {}, data = {}, ref = this._tail)
 {
   const cntx = this.getHandlerIterator(ref);
-  const process = new Process([message], [], [cntx], false);
+  const process = new Process([message], [data], [cntx], false);
   this._queue.push(process);
   if(this._timerNext === undefined)
     this._timerNext = this._timer(this._timerFunc);
