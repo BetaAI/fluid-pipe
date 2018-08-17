@@ -1,6 +1,17 @@
 {
+  "plugins": [
+    "transform-object-rest-spread",
+    [
+      "module-resolver",
+      {
+        "root": ["./src"],
+        "alias": {
+        }
+      }
+    ]
+  ],
   "env": {
-    "production":{
+    "prd":{
       "presets":[
         [
           "env",
@@ -13,14 +24,16 @@
             "useBuiltIns":true
           }
         ]
-      ]
+      ],
+      "plugins":["external-helpers"]
     },
-    "development":{
+    "dev":{
       "presets":[
         [
           "env",
           {
             "targets":{
+              "ie":11,
               "browsers":["last 2 Chrome versions", "last 2 Edge versions", "last 2 Firefox versions"]
             },
             "modules":false,
@@ -28,7 +41,8 @@
             "useBuiltIns":true
           }
         ]
-      ]
+      ],
+      "plugins":["external-helpers"]
     },
     "test":{
       "presets":[
@@ -42,8 +56,7 @@
             "useBuiltIns":true
           }
         ]
-      ],
-      "plugins": ["transform-object-rest-spread"]
+      ]
     }
   }
 }
