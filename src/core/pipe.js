@@ -16,7 +16,7 @@ class
 constructor(handler)
 {
   if(!(handler instanceof Handler))
-    throw new Error(`Invalid handler: ${handler}`);
+    throw new Error(`Invalid handler: ${handler.toString()}`);
   this.handler = handler;
   this.outbound = null;
   this.inbound = null;
@@ -150,10 +150,10 @@ constructor(config)
 _register(handler)
 {
   if(handler === this || !(handler instanceof Handler))
-    throw new Error(`Can't register handler: ${handler}`);
+    throw new Error(`Can't register handler: ${handler.toString()}`);
   const id = handler.id;
   if(this._hreg.has(id))
-    throw new Error(`Handler with id ${id} already registered`);
+    throw new Error(`Handler with id ${id.toString()} already registered`);
   const wrapper = new HandlerWrapper(handler);
   this._hreg.set(id, wrapper);
   return wrapper;
@@ -242,7 +242,7 @@ addBefore(handler, ref)
 {
   const wrapper = this._toWrapper(ref);
   if(!wrapper)
-    throw new Error(`Could not find ${ref} handler`);
+    throw new Error(`Could not find ${ref.toString()} handler`);
   return this._add(handler, wrapper);
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -250,7 +250,7 @@ addAfter(handler, ref)
 {
   const wrapper = this._toWrapper(ref);
   if(!wrapper)
-    throw new Error(`Could not find ${ref} handler`);
+    throw new Error(`Could not find ${ref.toString()} handler`);
   return this._add(handler, wrapper.inbound);
 }
 //==============================================================================
@@ -294,7 +294,7 @@ removeBefore(ref)
 {
   const wrapper = this._toWrapper(ref);
   if(!wrapper)
-    throw new Error(`Could not find ${ref} handler`);
+    throw new Error(`Could not find ${ref.toString()} handler`);
   if(wrapper.outbound === this._head)
     return this;
   return this._remove(wrapper.outbound);
@@ -304,7 +304,7 @@ removeAfter(ref)
 {
   const wrapper = this._toWrapper(ref);
   if(!wrapper)
-    throw new Error(`Could not find ${ref} handler`);
+    throw new Error(`Could not find ${ref.toString()} handler`);
   if(wrapper.inbound === this._tail)
     return this;
   return this._remove(wrapper.inbound);
