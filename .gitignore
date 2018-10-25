@@ -2,6 +2,7 @@
 .vscode/
 
 npm-debug.log*
+fluid-pipe*.tgz
 
 node_modules/
 lib/

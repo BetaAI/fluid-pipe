@@ -28,7 +28,7 @@ const config = {
     },
     {
       format: 'iife',
-      file: pkg.browser,
+      file: "lib/iife/fluid-pipe.js",
       name: 'FluidPipe',
       sourcemap: true
     },

@@ -4,7 +4,6 @@
   "description": "Runtime mutable pipeline",
   "main": "lib/cjs/fluid-pipe.lib.js",
   "module": "lib/esm/fluid-pipe.js",
-  "browser": "lib/iife/fluid-pipe.js",
   "files": [
     "lib"
   ],
