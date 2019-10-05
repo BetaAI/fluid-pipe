@@ -1,5 +1,5 @@
 # Fluid Pipe
-A simple
+A simple run-time reconfigurable pipeline
 # Features
 # Motivation
 # Usage
