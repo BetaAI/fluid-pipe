@@ -141,6 +141,21 @@ describe('Process', () => {
         'TAIL-OP2', 'TAIL-OP3',
       ]);
     });
+    //--------------------------------------------------------------------------
+    test('Cancel async', async () => {
+      expect.assertions(3);
+      const prc: Process = DefaultFactory.newInstance();
+      prc.pushData({trace: []});
+      const prom = prc
+        .setDir(ProcessDirection.TOTAIL)
+        .begContext(oPipe.getContext())
+        .startAsync(100);
+      prc.cancel();
+      const res = await prom;
+      expect(res).toBe(prc);
+      expect(prc.getStatus()).toBe(ProcessStatus.CANCELED);
+      expect(prc.getData().trace).toEqual([]);
+    });
   });
   //============================================================================
   describe('Complex Execution', () => {

@@ -4,10 +4,10 @@ import { Handler } from '../handler/handler';
 import { ProcessFactory } from '../process/factory';
 
 //******************************************************************************
-export enum ProcessStatus {RUNNING, SUSPENDED, STOPPED};
+export enum ProcessStatus {RUNNING, SUSPENDED, STOPPED, CANCELED, SCHEDULED};
 export enum ProcessDirection {TOTAIL, TOHEAD};
 //******************************************************************************
-export interface IProcessData
+export interface IProcessState
 {
   mStack?: any[];
   dStack?: any[];
@@ -15,7 +15,7 @@ export interface IProcessData
   dir?: ProcessDirection;
 }
 //------------------------------------------------------------------------------
-export interface IProcessConfig extends IProcessData
+export interface IProcessConfig extends IProcessState
 {
   id: any;
   factory: ProcessFactory;
@@ -42,6 +42,21 @@ constructor(cfg: IProcessConfig)
   this.dir = cfg.dir || ProcessDirection.TOTAIL;
   this.status = this.cStack.length > 0 ?
     ProcessStatus.SUSPENDED : ProcessStatus.STOPPED;
+}
+//==============================================================================
+getProcessState(): IProcessState
+{
+  return {
+    mStack: this.mStack,
+    dStack: this.dStack,
+    cStack: this.cStack,
+    dir: this.dir,
+  };
+}
+//==============================================================================
+clone(): Process
+{
+  return this.factory.clone(this);
 }
 //=== CONTEXT MANAGEMENT =======================================================
 cntxDepth(): number
@@ -180,12 +195,19 @@ start(): void
 //------------------------------------------------------------------------------
 startAsync(delay: number = 0): Promise<Process>
 {
+  this.status = ProcessStatus.SCHEDULED;
   return this.factory.runner.startAsync(this, delay);
 }
 //------------------------------------------------------------------------------
 suspend(): void
 {
   this.status = ProcessStatus.SUSPENDED;
+}
+//------------------------------------------------------------------------------
+cancel(): void
+{
+  this.status = ProcessStatus.CANCELED;
+  this.factory.runner.cancelAsync(this.id);
 }
 //------------------------------------------------------------------------------
 stop(): void

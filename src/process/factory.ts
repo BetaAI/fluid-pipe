@@ -1,4 +1,4 @@
-import { ProcessDirection, Process, IProcessData, IProcessConfig } from '../process/process';
+import { ProcessDirection, Process, IProcessState, IProcessConfig } from '../process/process';
 import { IterationContext } from '../pipe/context';
 import { ProcessRunner } from '../process/async-runner';
 
@@ -41,7 +41,7 @@ export interface IProcessFactoryConfig
   cntxCloner?: CntxClonerFn;
   runner?: ProcessRunner;
   dir?: ProcessDirection;
-  data?: IProcessData;
+  state?: IProcessState;
 }
 //------------------------------------------------------------------------------
 export class
@@ -53,7 +53,7 @@ messageCloner: ClonerFn;
 cntxCloner: CntxClonerFn;
 runner: ProcessRunner;
 dir: ProcessDirection;
-data: IProcessData;
+dfltState: IProcessState;
 //==============================================================================
 constructor(cfg: IProcessFactoryConfig)
 {
@@ -63,18 +63,18 @@ constructor(cfg: IProcessFactoryConfig)
   this.cntxCloner = cfg.cntxCloner || dfltCntxCloner;
   this.runner = cfg.runner || dfltRunner;
   this.dir = cfg.dir || ProcessDirection.TOTAIL;
-  this.data = cfg.data || {cStack: [], }
+  this.dfltState = cfg.state || {}
 }
 //==============================================================================
-newInstance(data: IProcessData = {}): Process
+newInstance(state: IProcessState = {}): Process
 {
   const cfg: IProcessConfig = {
     id: this.idFn(),
     factory: this,
-    mStack: this.messageCloner(data.mStack || this.data.mStack || []),
-    dStack: this.dataCloner(data.dStack || this.data.dStack || []),
-    cStack: dfltCntxCloner(data.cStack || this.data.cStack || []),
-    dir: data.dir || this.data.dir,
+    mStack: this.messageCloner(state.mStack || this.dfltState.mStack || []),
+    dStack: this.dataCloner(state.dStack || this.dfltState.dStack || []),
+    cStack: dfltCntxCloner(state.cStack || this.dfltState.cStack || []),
+    dir: state.dir || this.dfltState.dir,
   };
   return new Process(cfg);
 }
