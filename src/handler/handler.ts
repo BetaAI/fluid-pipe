@@ -21,9 +21,9 @@ constructor(config?: T)
     this.cfg.id : Symbol();
 }
 //==============================================================================
-abstract toTail(prc: Process): void;
+abstract toTail(prc: Process<any, any>): void;
 //==============================================================================
-abstract toHead(prc: Process): void;
+abstract toHead(prc: Process<any, any>): void;
 //==============================================================================
 abstract onPipeAdd(pipe: Pipe): void;
 //==============================================================================

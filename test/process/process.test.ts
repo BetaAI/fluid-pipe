@@ -5,9 +5,14 @@ import { DelegateHandler } from '../../src/handler/delegate';
 import { Handler } from '../../src/handler/handler';
 
 //******************************************************************************
+interface IExeTestData
+{
+  trace: string[],
+}
+//******************************************************************************
 describe('Process', () => {
   describe('State Management', () => {
-    const prc: Process = DefaultFactory.newInstance();
+    const prc: Process<symbol, symbol> = DefaultFactory.newInstance();
     const data = [Symbol('D-0'), Symbol('D-1'), Symbol('D-2'), Symbol('D-3')];
     //--------------------------------------------------------------------------
     test('Data Manipulation', () => {
@@ -44,8 +49,8 @@ describe('Process', () => {
   describe('Simple Execution', () => {
     const oPipe = new Pipe();
     const iPipe = new Pipe();
-    const fn = (dir: string) => (prc: Process) => {
-      const data = prc.getData();
+    const fn = (dir: string) => (prc: Process<IExeTestData, any>) => {
+      const data: IExeTestData = prc.getData() || {trace: []};
       const handler = prc.handlerCur() as Handler;
       data.trace.push(`${dir}-${handler.id}`);
     }
@@ -66,13 +71,14 @@ describe('Process', () => {
     });
     //--------------------------------------------------------------------------
     test('ToTail', () => {
-      const prc: Process = DefaultFactory.newInstance();
+      const prc: Process<IExeTestData, any> = DefaultFactory.newInstance();
       prc.pushData({trace: []});
       prc
         .setDir(ProcessDirection.TOTAIL)
         .begContext(oPipe.getContext())
         .start();
-      expect(prc.getData().trace).toEqual([
+      const data: IExeTestData = prc.getData() || {trace: []};
+      expect(data.trace).toEqual([
         'TAIL-OP0', 'TAIL-OP1',
         'TAIL-IP0', 'TAIL-IP1', 'TAIL-IP2', 'TAIL-IP3',
         'TAIL-OP2', 'TAIL-OP3',
@@ -80,13 +86,14 @@ describe('Process', () => {
     });
     //--------------------------------------------------------------------------
     test('ToHead', () => {
-      const prc: Process = DefaultFactory.newInstance();
+      const prc: Process<IExeTestData, any> = DefaultFactory.newInstance();
       prc.pushData({trace: []});
       prc
         .setDir(ProcessDirection.TOHEAD)
         .begContext(oPipe.getContext())
         .start();
-      expect(prc.getData().trace).toEqual([
+      const data: IExeTestData = prc.getData() || {trace: []};
+      expect(data.trace).toEqual([
         'HEAD-OP3', 'HEAD-OP2',
         'HEAD-IP3', 'HEAD-IP2', 'HEAD-IP1', 'HEAD-IP0',
         'HEAD-OP1', 'HEAD-OP0',
@@ -94,15 +101,16 @@ describe('Process', () => {
     });
     //--------------------------------------------------------------------------
     test('Direction Change', () => {
-      const prc: Process = DefaultFactory.newInstance();
-      const dirChanger = new DelegateHandler({toTail: (prc: Process) => prc.setDir(ProcessDirection.TOHEAD)}); 
+      const prc: Process<IExeTestData, any> = DefaultFactory.newInstance();
+      const dirChanger = new DelegateHandler({toTail: (prc: Process<IExeTestData, any>) => prc.setDir(ProcessDirection.TOHEAD)}); 
       iPipe.addBefore(dirChanger, 'IP3');
       prc.pushData({trace: []});
       prc
         .setDir(ProcessDirection.TOTAIL)
         .begContext(oPipe.getContext())
         .start();
-      expect(prc.getData().trace).toEqual([
+      const data: IExeTestData = prc.getData() || {trace: []};
+      expect(data.trace).toEqual([
         'TAIL-OP0', 'TAIL-OP1',
         'TAIL-IP0', 'TAIL-IP1', 'TAIL-IP2',
         'HEAD-IP2', 'HEAD-IP1', 'HEAD-IP0',
@@ -111,15 +119,16 @@ describe('Process', () => {
     });
     //--------------------------------------------------------------------------
     test('Context end', () => {
-      const prc: Process = DefaultFactory.newInstance();
-      const excape = new DelegateHandler({toTail: (prc: Process) => prc.endContext()}); 
+      const prc: Process<IExeTestData, any> = DefaultFactory.newInstance();
+      const excape = new DelegateHandler({toTail: (prc: Process<IExeTestData, any>) => prc.endContext()}); 
       iPipe.addBefore(excape, 'IP2');
       prc.pushData({trace: []});
       prc
         .setDir(ProcessDirection.TOTAIL)
         .begContext(oPipe.getContext())
         .start();
-      expect(prc.getData().trace).toEqual([
+      const data: IExeTestData = prc.getData() || {trace: []};
+      expect(data.trace).toEqual([
         'TAIL-OP0', 'TAIL-OP1',
         'TAIL-IP0', 'TAIL-IP1',
         'TAIL-OP2', 'TAIL-OP3',
@@ -128,14 +137,15 @@ describe('Process', () => {
     //--------------------------------------------------------------------------
     test('ToTail async', async () => {
       expect.assertions(2);
-      const prc: Process = DefaultFactory.newInstance();
+      const prc: Process<IExeTestData, any> = DefaultFactory.newInstance();
       prc.pushData({trace: []});
       const res = await prc
         .setDir(ProcessDirection.TOTAIL)
         .begContext(oPipe.getContext())
         .startAsync(10);
       expect(res).toBe(prc);
-      expect(prc.getData().trace).toEqual([
+      const data: IExeTestData = prc.getData() || {trace: []};
+      expect(data.trace).toEqual([
         'TAIL-OP0', 'TAIL-OP1',
         'TAIL-IP0', 'TAIL-IP1', 'TAIL-IP2', 'TAIL-IP3',
         'TAIL-OP2', 'TAIL-OP3',
@@ -144,7 +154,7 @@ describe('Process', () => {
     //--------------------------------------------------------------------------
     test('Cancel async', async () => {
       expect.assertions(3);
-      const prc: Process = DefaultFactory.newInstance();
+      const prc: Process<IExeTestData, any> = DefaultFactory.newInstance();
       prc.pushData({trace: []});
       const prom = prc
         .setDir(ProcessDirection.TOTAIL)
@@ -154,7 +164,8 @@ describe('Process', () => {
       const res = await prom;
       expect(res).toBe(prc);
       expect(prc.getStatus()).toBe(ProcessStatus.CANCELED);
-      expect(prc.getData().trace).toEqual([]);
+      const data: IExeTestData = prc.getData() || {trace: []};
+      expect(data.trace).toEqual([]);
     });
   });
   //============================================================================
@@ -186,7 +197,7 @@ describe('Process', () => {
     beforeEach(() => traces.length = 0);
     //--------------------------------------------------------------------------
     test('ToTail', () => {
-      const prc: Process = DefaultFactory.newInstance();
+      const prc: Process<any, any> = DefaultFactory.newInstance();
       prc.setDir(ProcessDirection.TOTAIL)
         .begContext(iPipe0.getContext())
         .start();
@@ -198,7 +209,7 @@ describe('Process', () => {
     });
     //--------------------------------------------------------------------------
     test('ToHead', () => {
-      const prc: Process = DefaultFactory.newInstance();
+      const prc: Process<any, any> = DefaultFactory.newInstance();
       prc.setDir(ProcessDirection.TOHEAD)
         .begContext(iPipe1.getContext())
         .start();
@@ -210,11 +221,11 @@ describe('Process', () => {
     });
     //--------------------------------------------------------------------------
     test('Suspend | Resume', () => {
-      const prc: Process = DefaultFactory.newInstance();
-      let suspendedPrc: Process | undefined;
+      const prc: Process<any, any> = DefaultFactory.newInstance();
+      let suspendedPrc: Process<any, any> | undefined;
       const suspender: DelegateHandler = new DelegateHandler({
         id: 'SUSPEND',
-        toTail: (prc: Process) => {
+        toTail: (prc: Process<any, any>) => {
           suspendedPrc = prc;
           prc.suspend();
           const pipe = prc.pipeCur();

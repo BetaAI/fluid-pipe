@@ -7,44 +7,44 @@ import { ProcessFactory } from '../process/factory';
 export enum ProcessStatus {RUNNING, SUSPENDED, STOPPED, CANCELED, SCHEDULED};
 export enum ProcessDirection {TOTAIL, TOHEAD};
 //******************************************************************************
-export interface IProcessState
+export interface IProcessState<D, M>
 {
-  mStack?: any[];
-  dStack?: any[];
   cStack?: IterationContext[];
+  dStack?: D[];
+  mStack?: M[];
   dir?: ProcessDirection;
 }
 //------------------------------------------------------------------------------
-export interface IProcessConfig extends IProcessState
+export interface IProcessConfig<D, M> extends IProcessState<D, M>
 {
   id: any;
-  factory: ProcessFactory;
+  factory: ProcessFactory<D, M>;
 }
 //------------------------------------------------------------------------------
 export class
-  Process
+  Process<D, M>
 {
 readonly id: any;
-readonly factory: ProcessFactory;
-protected mStack: any[];
-protected dStack: any[];
+readonly factory: ProcessFactory<D, M>;
 protected cStack: IterationContext[];
+protected dStack: D[];
+protected mStack: M[];
 protected dir: ProcessDirection;
 protected status: ProcessStatus;
 //==============================================================================
-constructor(cfg: IProcessConfig)
+constructor(cfg: IProcessConfig<D, M>)
 {
   this.id = cfg.id;
   this.factory = cfg.factory;
-  this.mStack = cfg.mStack || [];
-  this.dStack = cfg.dStack || [];
   this.cStack = cfg.cStack || [];
+  this.dStack = cfg.dStack || [];
+  this.mStack = cfg.mStack || [];
   this.dir = cfg.dir || ProcessDirection.TOTAIL;
   this.status = this.cStack.length > 0 ?
     ProcessStatus.SUSPENDED : ProcessStatus.STOPPED;
 }
 //==============================================================================
-getProcessState(): IProcessState
+getProcessState(): IProcessState<D, M>
 {
   return {
     mStack: this.mStack,
@@ -54,7 +54,7 @@ getProcessState(): IProcessState
   };
 }
 //==============================================================================
-clone(): Process
+clone(): Process<D, M>
 {
   return this.factory.clone(this);
 }
@@ -64,84 +64,122 @@ cntxDepth(): number
   return this.cStack.length;
 }
 //------------------------------------------------------------------------------
-pipeCur(): Pipe | undefined
+getPipe(idx: number = -1): Pipe | undefined
 {
-  const len = this.cStack.length;
-  return len > 0 ? this.cStack[len - 1].pipe() : undefined;
+  const len: number = this.cStack.length;
+  const i: number = idx < 0 ? len + idx : idx;
+  const cntx: IterationContext = this.cStack[i]
+  return cntx !== undefined ? cntx.pipe() : undefined;
 }
 //------------------------------------------------------------------------------
-handlerCur(): Handler | undefined
+pipeCur(): Pipe
 {
-  const len = this.cStack.length;
-  return len > 0 ? this.cStack[len - 1].current().value : undefined;
+  const result: Pipe | undefined = this.getPipe();
+  if(result === undefined)
+    throw new Error('No current pipe');
+  return result;
 }
 //------------------------------------------------------------------------------
-begContext(cntx: IterationContext): Process
+getHandler(cntxIdx: number = -1): Handler | undefined
+{
+  const len: number = this.cStack.length;
+  const i: number = cntxIdx < 0 ? len + cntxIdx : cntxIdx;
+  const cntx: IterationContext = this.cStack[i]
+  return cntx !== undefined ? cntx.current().value : undefined;
+}
+//------------------------------------------------------------------------------
+handlerCur(): Handler
+{
+  const result: Handler | undefined = this.getHandler();
+  if(result === undefined)
+    throw new Error('No current handler');
+  return result;
+}
+//------------------------------------------------------------------------------
+begContext(cntx: IterationContext): Process<D, M>
 {
   this.cStack.push(cntx);
   return this;
 }
 //------------------------------------------------------------------------------
-endContext(): Process
+endContext(): Process<D, M>
 {
   this.cStack.pop();
   return this;
 }
-//=== STACK MANAGEMENT HELPERS =================================================
-protected getStk(stk: any[], idx: number): any
+//=== MESSAGE MANAGEMENT =======================================================
+getMessage(idx: number = -1): M | undefined
 {
+  const stk = this.mStack;
   const len: number = stk.length;
   const i: number = idx < 0 ? len + idx : idx;
   return i >= 0 && i < len ? stk[i] : undefined;
 }
 //------------------------------------------------------------------------------
-protected setStk(stk: any[], val: any, idx: number): any
+setMessage(val: M, idx: number = -1): M | undefined
 {
+  const stk = this.mStack;
   const len: number = Math.max(1, stk.length);
   const i: number = idx < 0 ? len + idx : idx;
   if(i < 0 || i > len)
     throw new Error(`Index ${idx} is out of bounds`);
-  const result: any = stk[i];
+  const result: M = stk[i];
   stk[i] = val;
   return result;
 }
-//=== MESSAGE MANAGEMENT =======================================================
-getMessage(idx: number = -1): any
+//------------------------------------------------------------------------------
+messageCur(): M
 {
-  return this.getStk(this.mStack, idx);
+  const result: M | undefined = this.getMessage(-1);
+  if(result === undefined)
+    throw new Error('Undefined message');
+  return result;
 }
 //------------------------------------------------------------------------------
-setMessage(val: any, idx: number = -1): any
-{
-  return this.setStk(this.mStack, val, idx);
-}
-//------------------------------------------------------------------------------
-pushMessage(val: any): void
+pushMessage(val: M): void
 {
   this.mStack.push(val);
 }
 //------------------------------------------------------------------------------
-popMessage(): any
+popMessage(): M | undefined
 {
   return this.mStack.pop();
 }
 //=== DATA MANAGEMENT ==========================================================
-getData(idx: number = -1): any
+getData(idx: number = -1): D | undefined
 {
-  return this.getStk(this.dStack, idx);
+  const stk = this.dStack;
+  const len: number = stk.length;
+  const i: number = idx < 0 ? len + idx : idx;
+  return i >= 0 && i < len ? stk[i] : undefined;
 }
 //------------------------------------------------------------------------------
-setData(val: any, idx: number = -1): any
+setData(val: D, idx: number = -1): D | undefined
 {
-  return this.setStk(this.dStack, val, idx);
+  const stk = this.dStack;
+  const len: number = Math.max(1, stk.length);
+  const i: number = idx < 0 ? len + idx : idx;
+  if(i < 0 || i > len)
+    throw new Error(`Index ${idx} is out of bounds`);
+  const result: D = stk[i];
+  stk[i] = val;
+  return result;
 }
 //------------------------------------------------------------------------------
-pushData(val: any): void
+dataCur(): D
+{
+  const result: D | undefined = this.getData(-1);
+  if(result === undefined)
+    throw new Error('Undefined data');
+  return result;
+}
+//------------------------------------------------------------------------------
+pushData(val: D): void
 {
   this.dStack.push(val);
 }
 //------------------------------------------------------------------------------
-popData(): any
+popData(): D | undefined
 {
   return this.dStack.pop();
 }
@@ -166,7 +204,7 @@ getDir(): ProcessDirection
   return this.dir;
 }
 //------------------------------------------------------------------------------
-setDir(val: ProcessDirection): Process
+setDir(val: ProcessDirection): Process<D, M>
 {
   this.dir = val;
   return this;
@@ -193,7 +231,7 @@ start(): void
   }
 }
 //------------------------------------------------------------------------------
-startAsync(delay: number = 0): Promise<Process>
+startAsync(delay: number = 0): Promise<Process<D, M>>
 {
   this.status = ProcessStatus.SCHEDULED;
   return this.factory.runner.startAsync(this, delay);

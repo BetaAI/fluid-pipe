@@ -2,15 +2,15 @@ import { Process } from '../process/process';
 
 //******************************************************************************
 export class
-  ProcessRunner
+  ProcessRunner<D, M>
 {
 protected cancelMap: Map<any, () => void> = new Map();
 //==============================================================================
-startAsync(prc: Process, delay: number = 0): Promise<Process>
+startAsync(prc: Process<D, M>, delay: number = 0): Promise<Process<D, M>>
 {
   if(this.cancelMap.has(prc.id))
     throw new Error(`Process ${String(prc.id)} is already scheduled`);
-  const promise: Promise<Process> = new Promise((res) =>
+  const promise: Promise<Process<D, M>> = new Promise((res) =>
   {
     const to = setTimeout(() =>
     {

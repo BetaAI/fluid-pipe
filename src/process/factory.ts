@@ -31,31 +31,31 @@ const dfltCntxCloner: CntxClonerFn = (data) =>
   return result;
 }
 //------------------------------------------------------------------------------
-const dfltRunner: ProcessRunner = new ProcessRunner();
+const dfltRunner: ProcessRunner<any, any> = new ProcessRunner();
 //******************************************************************************
-export interface IProcessFactoryConfig
+export interface IProcessFactoryConfig<D, M>
 {
   idFn?: IdFn;
   dataCloner?: ClonerFn;
   messageCloner?: ClonerFn;
   cntxCloner?: CntxClonerFn;
-  runner?: ProcessRunner;
+  runner?: ProcessRunner<D, M>;
   dir?: ProcessDirection;
-  state?: IProcessState;
+  state?: IProcessState<D, M>;
 }
 //------------------------------------------------------------------------------
 export class
-  ProcessFactory
+  ProcessFactory<D, M>
 {
 idFn: IdFn;
 dataCloner: ClonerFn;
 messageCloner: ClonerFn;
 cntxCloner: CntxClonerFn;
-runner: ProcessRunner;
+runner: ProcessRunner<D, M>;
 dir: ProcessDirection;
-dfltState: IProcessState;
+dfltState: IProcessState<D, M>;
 //==============================================================================
-constructor(cfg: IProcessFactoryConfig)
+constructor(cfg: IProcessFactoryConfig<D, M>)
 {
   this.idFn = cfg.idFn || dfltId;
   this.dataCloner = cfg.dataCloner || dfltCloner;
@@ -66,9 +66,9 @@ constructor(cfg: IProcessFactoryConfig)
   this.dfltState = cfg.state || {}
 }
 //==============================================================================
-newInstance(state: IProcessState = {}): Process
+newInstance(state: IProcessState<D, M> = {}): Process<D, M>
 {
-  const cfg: IProcessConfig = {
+  const cfg: IProcessConfig<D, M> = {
     id: this.idFn(),
     factory: this,
     mStack: this.messageCloner(state.mStack || this.dfltState.mStack || []),
@@ -79,9 +79,9 @@ newInstance(state: IProcessState = {}): Process
   return new Process(cfg);
 }
 //==============================================================================
-clone(src: Process): Process
+clone(src: Process<D, M>): Process<D, M>
 {
-  const cfg: IProcessConfig = {
+  const cfg: IProcessConfig<D, M> = {
     id: this.idFn(),
     factory: this,
     mStack: this.messageCloner(src['mStack'] || []),
@@ -94,5 +94,5 @@ clone(src: Process): Process
 //==============================================================================
 }// ProcessFactory
 //******************************************************************************
-export const DefaultFactory: ProcessFactory = new ProcessFactory({});
+export const DefaultFactory: ProcessFactory<any, any> = new ProcessFactory({});
 //******************************************************************************

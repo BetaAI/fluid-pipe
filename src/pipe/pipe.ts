@@ -218,12 +218,12 @@ removeAll(): Handler[]
   return result;
 }
 //=== HANDLER METHODS ==========================================================
-toHead(prc: Process): void
+toHead(prc: Process<any, any>): void
 {
   prc.begContext(this.getContext());
 }
 //==============================================================================
-toTail(prc: Process): void
+toTail(prc: Process<any, any>): void
 {
   prc.begContext(this.getContext());
 }

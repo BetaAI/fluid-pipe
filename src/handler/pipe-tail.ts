@@ -10,7 +10,7 @@ extends
   Source<IHandlerConfig>
 {
 //==============================================================================
-toTail(prc: Process): void
+toTail(prc: Process<any, any>): void
 {
   if(prc.cntxDepth() > 1)
     return;
@@ -18,12 +18,12 @@ toTail(prc: Process): void
   prc.endContext();
   for(const p of this.pipes)
   {
-    const clone: Process = prc.factory.clone(prc);
+    const clone: Process<any, any> = prc.factory.clone(prc);
     clone.begContext(p.getContext(pipe)).start();
   }
 }
 //==============================================================================
-toHead(_prc: Process): void {/* NO-OP */}
+toHead(_prc: Process<any, any>): void {/* NO-OP */}
 //==============================================================================
 }// PipeTail
 //******************************************************************************

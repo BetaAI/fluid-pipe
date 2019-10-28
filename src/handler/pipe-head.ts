@@ -10,9 +10,9 @@ extends
   Source<IHandlerConfig>
 {
 //==============================================================================
-toTail(_prc: Process): void {/* NO-OP */}
+toTail(_prc: Process<any, any>): void {/* NO-OP */}
 //==============================================================================
-toHead(prc: Process): void
+toHead(prc: Process<any, any>): void
 {
   if(prc.cntxDepth() > 1)
     return;
@@ -20,7 +20,7 @@ toHead(prc: Process): void
   prc.endContext();
   for(const p of this.pipes)
   {
-    const clone: Process = prc.factory.clone(prc);
+    const clone: Process<any, any> = prc.factory.clone(prc);
     clone.begContext(p.getContext(pipe)).start();
   }
 }

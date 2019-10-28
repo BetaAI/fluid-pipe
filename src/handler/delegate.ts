@@ -5,8 +5,8 @@ import { Pipe } from '../pipe/pipe';
 //******************************************************************************
 export interface IDelegateConfig extends IHandlerConfig
 {
-  toHead?: (prc: Process) => void;
-  toTail?: (prc: Process) => void;
+  toHead?: (prc: Process<any, any>) => void;
+  toTail?: (prc: Process<any, any>) => void;
 }
 //******************************************************************************
 export class
@@ -15,13 +15,13 @@ extends
   Handler<IDelegateConfig>
 {
 //==============================================================================
-toTail(prc: Process): void
+toTail(prc: Process<any, any>): void
 {
   if(typeof this.cfg.toTail === 'function')
     this.cfg.toTail(prc);
 }
 //==============================================================================
-toHead(prc: Process): void
+toHead(prc: Process<any, any>): void
 {
   if(typeof this.cfg.toHead === 'function')
     this.cfg.toHead(prc);
