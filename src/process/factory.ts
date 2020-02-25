@@ -1,4 +1,4 @@
-import { ProcessDirection, Process, IProcessState, IProcessConfig } from '../process/process';
+import { Process, IProcessState, IProcessConfig } from '../process/process';
 import { IterationContext } from '../pipe/context';
 import { ProcessRunner } from '../process/async-runner';
 
@@ -40,7 +40,6 @@ export interface IProcessFactoryConfig<D, M>
   messageCloner?: ClonerFn;
   cntxCloner?: CntxClonerFn;
   runner?: ProcessRunner<D, M>;
-  dir?: ProcessDirection;
   state?: IProcessState<D, M>;
 }
 //------------------------------------------------------------------------------
@@ -52,7 +51,6 @@ dataCloner: ClonerFn;
 messageCloner: ClonerFn;
 cntxCloner: CntxClonerFn;
 runner: ProcessRunner<D, M>;
-dir: ProcessDirection;
 dfltState: IProcessState<D, M>;
 //==============================================================================
 constructor(cfg: IProcessFactoryConfig<D, M>)
@@ -62,7 +60,6 @@ constructor(cfg: IProcessFactoryConfig<D, M>)
   this.messageCloner = cfg.messageCloner || dfltCloner;
   this.cntxCloner = cfg.cntxCloner || dfltCntxCloner;
   this.runner = cfg.runner || dfltRunner;
-  this.dir = cfg.dir || ProcessDirection.TOTAIL;
   this.dfltState = cfg.state || {}
 }
 //==============================================================================
